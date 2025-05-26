@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+env/
+.venv/
+ENV/
+
+# IDE and editor specific files
+.vscode/
+.idea/
+*.swp
+*~
+*.sublime-project
+*.sublime-workspace
+
+# Keras Tuner directory
+keras_tuner_dir/
+
+# Log files
+*.log
+logs/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Data files - uncomment if you want to ignore large data files
+# data/*.npy
+# data/*.csv
+# data/*.fasta
+# data/*.pkl
+
+# Model files - uncomment if you want to ignore large model files
+# model/*.keras
+# model/*.pkl
+# model/*.pt
+
+# Temporary files created by scripts (if any specific patterns)
+# temp_*.fasta
+# temp_*.csv

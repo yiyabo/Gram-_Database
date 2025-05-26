@@ -1,0 +1,286 @@
+/* 
+ * 抗革兰氏阴性菌预测系统 - 主样式表
+ * 设计：现代、简洁、专业的生物科学风格
+ */
+
+/* 基础样式 */
+:root {
+    --primary-color: #2c3e50;
+    --secondary-color: #3498db;
+    --accent-color: #2ecc71;
+    --light-color: #ecf0f1;
+    --dark-color: #34495e;
+    --danger-color: #e74c3c;
+    --warning-color: #f39c12;
+    --info-color: #3498db;
+    --success-color: #2ecc71;
+    --border-radius: 0.5rem;
+    --box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --transition: all 0.3s ease;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    color: var(--dark-color);
+    line-height: 1.6;
+}
+
+/* 导航栏样式 */
+.navbar {
+    background-color: var(--primary-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 1rem 0;
+}
+
+.navbar-brand {
+    font-weight: 600;
+    font-size: 1.4rem;
+}
+
+.navbar-dark .navbar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 500;
+    transition: var(--transition);
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    margin: 0 0.2rem;
+}
+
+.navbar-dark .navbar-nav .nav-link:hover,
+.navbar-dark .navbar-nav .nav-link.active {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 卡片样式 */
+.card {
+    border: none;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    transition: var(--transition);
+    margin-bottom: 1.5rem;
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    font-weight: 600;
+    padding: 0.75rem 1.25rem;
+}
+
+.card-header.bg-primary {
+    background-color: var(--primary-color) !important;
+}
+
+.card-header.bg-success {
+    background-color: var(--success-color) !important;
+}
+
+.card-header.bg-info {
+    background-color: var(--info-color) !important;
+}
+
+/* 表单元素 */
+.form-control {
+    border-radius: var(--border-radius);
+    border: 1px solid #ced4da;
+    padding: 0.75rem 1rem;
+    transition: var(--transition);
+}
+
+.form-control:focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+}
+
+textarea.form-control {
+    min-height: 200px;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+/* 按钮样式 */
+.btn {
+    border-radius: var(--border-radius);
+    padding: 0.5rem 1.25rem;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.btn-primary {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+    border-color: #2980b9;
+}
+
+.btn-success {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.btn-success:hover {
+    background-color: #27ae60;
+    border-color: #27ae60;
+}
+
+.btn-outline-primary {
+    color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+.btn-outline-success {
+    color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.btn-outline-success:hover {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+/* 文件上传区域 */
+.file-upload-container {
+    border: 2px dashed #ced4da;
+    border-radius: var(--border-radius);
+    background-color: #f8f9fa;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.file-upload-container:hover,
+.file-upload-container.dragover {
+    border-color: var(--secondary-color);
+    background-color: rgba(52, 152, 219, 0.05);
+}
+
+.file-upload-content {
+    color: #6c757d;
+}
+
+.selected-file-name {
+    font-weight: 500;
+    color: var(--secondary-color);
+}
+
+/* 表格样式 */
+.table {
+    margin-bottom: 0;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    border-top: none;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(52, 152, 219, 0.05);
+}
+
+/* 序列显示 */
+.sequence-text {
+    font-family: 'Courier New', Courier, monospace;
+    word-break: break-all;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 预测标签样式 */
+.prediction-positive {
+    color: var(--success-color);
+    font-weight: 600;
+}
+
+.prediction-negative {
+    color: var(--danger-color);
+    font-weight: 600;
+}
+
+/* 页脚样式 */
+.footer {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.footer h5 {
+    font-weight: 600;
+}
+
+.footer .text-muted {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .navbar-brand {
+        font-size: 1.2rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .table th, .table td {
+        padding: 0.5rem;
+    }
+}
+
+/* 动画效果 */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 标签页样式 */
+.nav-tabs .nav-link {
+    color: var(--dark-color);
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--secondary-color);
+    font-weight: 600;
+}
+
+/* 预格式化文本 */
+pre {
+    background-color: #f8f9fa;
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9rem;
+}
+
+/* 手风琴样式 */
+.accordion-button:not(.collapsed) {
+    background-color: rgba(52, 152, 219, 0.1);
+    color: var(--secondary-color);
+}
+
+.accordion-button:focus {
+    box-shadow: none;
+    border-color: rgba(52, 152, 219, 0.5);
+}

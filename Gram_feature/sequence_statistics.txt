@@ -1,0 +1,10 @@
+Total sequences after processing: 5340
+Average length: 29.18
+Average charge: 3.94
+Average hydrophobicity: -0.03
+Average hydrophobic moment: 0.58
+Average hydrophilicity: -0.01
+Average hydropathicity: -0.13
+Average aliphatic index: 92.17
+Average instability index: 35.23
+Average cysteine content: 0.0436

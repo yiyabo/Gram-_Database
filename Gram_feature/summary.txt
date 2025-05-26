@@ -1,0 +1,8 @@
+Charge range (P5–P95): -0.4 to 9.03
+Hydrophobicity range (P5–P95): -0.83 to 0.52
+Hydrophobic_Moment range (P5–P95): 0.27 to 0.92
+Hydrophilicity range (P5–P95): -0.82 to 0.99
+Hydropathicity range (P5–P95): -2.06 to 1.46
+Aliphatic_Index range (P5–P95): 24.37 to 182.0
+Instability_Index range (P5–P95): -14.09 to 112.17
+Cysteine_Content range (P5–P95): 0.0 to 0.18

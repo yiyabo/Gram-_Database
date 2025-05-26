@@ -1,0 +1,8 @@
+max_len=30
+latent_dim=64
+split_times=3
+overlap=2
+fusion=mean
+n_clusters=1
+aux_max_len=181
+vocab_size=7976
