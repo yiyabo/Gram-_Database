@@ -1,6 +1,6 @@
 /**
- * 抗革兰氏阴性菌预测系统 - 主JavaScript文件
- * 实现用户界面交互和数据处理功能
+ * Gram-Negative Bacteria Prediction System - Main JavaScript File
+ * Implements user interface interactions and data processing functions
  */
 
 // 在DOM加载完成后执行
@@ -89,8 +89,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 })
                 .catch(error => {
-                    console.error('加载示例数据失败:', error);
-                    showError('加载示例数据失败，请重试');
+                    console.error('Failed to load example data:', error);
+                    showError('Failed to load example data, please try again.');
                 });
         });
     }
@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             
             if (!fastaFile.files.length) {
-                showError('请选择FASTA文件');
+                showError('Please select a FASTA file.');
                 return;
             }
             
@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             
             if (!fastaText.value.trim()) {
-                showError('请输入FASTA序列数据');
+                showError('Please input FASTA sequence data.');
                 return;
             }
             
@@ -152,8 +152,8 @@ document.addEventListener('DOMContentLoaded', function() {
             displayResults(data);
         })
         .catch(error => {
-            console.error('预测请求失败:', error);
-            showError('预测请求失败，请重试');
+            console.error('Prediction request failed:', error);
+            showError('Prediction request failed, please try again.');
         });
     }
     
@@ -187,7 +187,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const seqCell = document.createElement('td');
             seqCell.classList.add('sequence-text');
             seqCell.textContent = result.sequence;
-            seqCell.title = result.sequence; // 鼠标悬停显示完整序列
+            seqCell.title = result.sequence; // Show full sequence on hover
             row.appendChild(seqCell);
             
             // 预测概率
@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded', function() {
             data: {
                 labels: labels,
                 datasets: [{
-                    label: '序列数量',
+                    label: 'Number of Sequences',
                     data: probCounts,
                     backgroundColor: function(context) {
                         const index = context.dataIndex;
@@ -269,16 +269,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     tooltip: {
                         callbacks: {
                             title: function(tooltipItems) {
-                                return '预测概率: ' + tooltipItems[0].label;
+                                return 'Prediction Probability: ' + tooltipItems[0].label;
                             },
                             label: function(context) {
-                                return '序列数量: ' + context.raw;
+                                return 'Number of Sequences: ' + context.raw;
                             }
                         }
                     },
                     title: {
                         display: true,
-                        text: '预测概率分布',
+                        text: 'Prediction Probability Distribution',
                         font: {
                             size: 16
                         }
@@ -289,7 +289,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         beginAtZero: true,
                         title: {
                             display: true,
-                            text: '序列数量'
+                            text: 'Number of Sequences'
                         },
                         ticks: {
                             precision: 0
@@ -298,7 +298,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     x: {
                         title: {
                             display: true,
-                            text: '预测概率'
+                            text: 'Prediction Probability'
                         }
                     }
                 }
@@ -310,7 +310,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (exportCSV) {
         exportCSV.addEventListener('click', function() {
             if (!predictionResults.length) {
-                showError('没有可导出的结果');
+                showError('No results to export.');
                 return;
             }
             
@@ -328,7 +328,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (response.ok) {
                     return response.blob();
                 }
-                throw new Error('导出失败');
+                throw new Error('Export failed');
             })
             .then(blob => {
                 const url = window.URL.createObjectURL(blob);
@@ -341,8 +341,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.URL.revokeObjectURL(url);
             })
             .catch(error => {
-                console.error('导出CSV失败:', error);
-                showError('导出CSV失败，请重试');
+                console.error('Failed to export CSV:', error);
+                showError('Failed to export CSV, please try again.');
             });
         });
     }
@@ -351,14 +351,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (exportFASTA) {
         exportFASTA.addEventListener('click', function() {
             if (!predictionResults.length) {
-                showError('没有可导出的结果');
+                showError('No results to export.');
                 return;
             }
             
             // 检查是否有正例
             const positiveResults = predictionResults.filter(r => r.prediction === 1);
             if (!positiveResults.length) {
-                showError('没有阳性结果可导出');
+                showError('No positive results to export.');
                 return;
             }
             
@@ -376,7 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (response.ok) {
                     return response.blob();
                 }
-                throw new Error('导出失败');
+                throw new Error('Export failed');
             })
             .then(blob => {
                 const url = window.URL.createObjectURL(blob);
@@ -389,8 +389,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.URL.revokeObjectURL(url);
             })
             .catch(error => {
-                console.error('导出FASTA失败:', error);
-                showError('导出FASTA失败，请重试');
+                console.error('Failed to export FASTA:', error);
+                showError('Failed to export FASTA, please try again.');
             });
         });
     }
