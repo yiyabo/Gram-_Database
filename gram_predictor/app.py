@@ -264,6 +264,10 @@ def index():
 def about():
     return render_template('about.html')
 
+@app.route('/generate')
+def generate():
+    return render_template('generate.html')
+
 @app.route('/predict', methods=['POST'])
 def predict_sequence_route(): # Renamed to avoid conflict with any potential local 'predict_sequence'
     global keras_model_global, global_feature_scaler_app 
