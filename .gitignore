@@ -51,3 +51,4 @@ Thumbs.db
 # temp_*.fasta
 # temp_*.csv
 .aider*
+--api_keys={'gemini': 'AIzaSyDmq6anTIob-5otVDfdAWrQy3NHQjio8Z8'}
