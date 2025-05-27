@@ -6,7 +6,8 @@ __pycache__/
 dist/
 build/
 *.egg
-
+data/AlphaFold_Data_Gram+/
+data/AlphaFold_Data_Gram-/
 # Virtual environment
 venv/
 env/
@@ -49,3 +50,4 @@ Thumbs.db
 # Temporary files created by scripts (if any specific patterns)
 # temp_*.fasta
 # temp_*.csv
+.aider*
