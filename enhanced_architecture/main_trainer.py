@@ -21,7 +21,7 @@ import json
 from config.model_config import get_config
 from esm2_auxiliary_encoder import ESM2AuxiliaryEncoder, ContrastiveLoss
 from diffusion_models.d3pm_diffusion import D3PMDiffusion, D3PMScheduler, D3PMUNet
-from data_loader import AntimicrobialPeptideDataset, ContrastiveAMPDataset, collate_contrastive_batch, tokens_to_sequence
+from data_loader import AntimicrobialPeptideDataset, ContrastiveAMPDataset, collate_contrastive_batch
 from evaluation.evaluator import ModelEvaluator
 
 class EnhancedAMPTrainer:
@@ -453,20 +453,22 @@ class EnhancedAMPTrainer:
     
     def generate_samples(self, num_samples: int = 10, max_length: int = 50) -> List[str]:
         """生成样本序列"""
-        self.diffusion_model.model.eval()  # 设置内部模型为评估模式
+        self.diffusion_model.eval()
         
         with torch.no_grad():
-            # 生成序列
+            # 生成随机噪声作为起点
+            shape = (num_samples, max_length)
             generated_sequences = self.diffusion_model.sample(
-                batch_size=num_samples,
-                seq_len=max_length,
-                num_inference_steps=self.config.diffusion.num_inference_steps
+                shape=shape,
+                num_inference_steps=self.config.diffusion.num_inference_steps,
+                device=self.device
             )
             
             # 转换为氨基酸序列
+            tokenizer = self.diffusion_model.get_tokenizer()
             sequences = []
             for seq_tokens in generated_sequences:
-                seq_str = tokens_to_sequence(seq_tokens.cpu().numpy())
+                seq_str = tokenizer.decode(seq_tokens.cpu().numpy())
                 sequences.append(seq_str)
         
         return sequences
