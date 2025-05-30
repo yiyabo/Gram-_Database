@@ -47,6 +47,12 @@ Thumbs.db
 # model/*.pkl
 # model/*.pt
 
+# Enhanced architecture output files
+enhanced_architecture/output/checkpoints/*.pt
+enhanced_architecture/output/checkpoints/*.pth
+enhanced_architecture/output/logs/*.log
+enhanced_architecture/output/tensorboard/events.out.tfevents.*
+
 # Temporary files created by scripts (if any specific patterns)
 # temp_*.fasta
 # temp_*.csv
