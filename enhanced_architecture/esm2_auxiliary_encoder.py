@@ -97,7 +97,6 @@ class ContrastiveLoss(nn.Module):
 
 class ESM2AuxiliaryEncoder(nn.Module):
     """ESM-2增强辅助编码器"""
-    
     def __init__(self, config: ESM2Config = None):
         super().__init__()
         self.config = config or ESM2Config()
@@ -152,6 +151,17 @@ class ESM2AuxiliaryEncoder(nn.Module):
         # device = "cuda" if torch.cuda.is_available() else "cpu"
         self.to(device)
         logger.info(f"ESM2AuxiliaryEncoder初始化完成，设备: {device}")
+    
+    def forward(self, sequences: List[str]) -> torch.Tensor:
+        """
+        标准的PyTorch forward方法，调用encode_sequences
+        
+        Args:
+            sequences: 蛋白质序列列表
+        Returns:
+            features: [batch_size, output_dim] 特征张量
+        """
+        return self.encode_sequences(sequences)
     
     def encode_sequences(self, sequences: List[str]) -> torch.Tensor:
         """
