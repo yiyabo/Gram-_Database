@@ -85,23 +85,21 @@ class D3PMScheduler:
             noise = torch.randint(0, self.vocab_size, x_start.shape, 
                                 device=x_start.device)
         
-        # 使用转移矩阵计算噪声序列
+        # 矢量化实现：更高效的批量处理
         batch_size, seq_len = x_start.shape
-        x_noisy = torch.zeros_like(x_start)
         
-        for i in range(batch_size):
-            t_i = t[i].item()
-            alpha_cumprod_t = self.alphas_cumprod[t_i]
-            
-            # 对每个位置应用噪声
-            for j in range(seq_len):
-                original_token = x_start[i, j].item()
-                
-                # 以alpha_cumprod_t的概率保持原token，否则随机选择
-                if torch.rand(1).item() < alpha_cumprod_t:
-                    x_noisy[i, j] = original_token
-                else:
-                    x_noisy[i, j] = torch.randint(0, self.vocab_size, (1,)).item()
+        # 获取每个样本对应的alpha_cumprod_t
+        alpha_cumprod_t = self.alphas_cumprod[t]  # [batch_size]
+        alpha_cumprod_t = alpha_cumprod_t.view(batch_size, 1)  # [batch_size, 1]
+        
+        # 生成随机概率矩阵
+        rand_probs = torch.rand(x_start.shape, device=x_start.device)  # [batch_size, seq_len]
+        
+        # 创建掩码：True表示保持原token，False表示使用噪声
+        keep_mask = rand_probs < alpha_cumprod_t  # 广播比较
+        
+        # 应用掩码：保持原token或使用噪声
+        x_noisy = torch.where(keep_mask, x_start, noise)
         
         return x_noisy
     
@@ -255,8 +253,18 @@ class D3PMDiffusion:
     @torch.no_grad()
     def sample(self, batch_size: int, seq_len: int, 
                esm_features: Optional[torch.Tensor] = None,
-               num_inference_steps: Optional[int] = None) -> torch.Tensor:
-        """生成新的蛋白质序列"""
+               num_inference_steps: Optional[int] = None,
+               temperature: float = 1.0) -> torch.Tensor:
+        """
+        生成新的蛋白质序列
+        
+        Args:
+            batch_size: 批次大小
+            seq_len: 序列长度
+            esm_features: ESM-2特征（可选）
+            num_inference_steps: 推理步数
+            temperature: 采样温度，控制随机性（1.0=标准，>1.0更随机，<1.0更确定）
+        """
         if num_inference_steps is None:
             num_inference_steps = self.scheduler.num_timesteps
         
@@ -277,12 +285,13 @@ class D3PMDiffusion:
             
             # 采样下一个状态
             if i < len(timesteps) - 1:
-                # 不是最后一步，添加一些随机性
-                probs = F.softmax(predicted_logits, dim=-1)
+                # 不是最后一步，添加温度控制的随机性
+                scaled_logits = predicted_logits / temperature
+                probs = F.softmax(scaled_logits, dim=-1)
                 x = torch.multinomial(probs.view(-1, self.scheduler.vocab_size), 
                                     num_samples=1).view(batch_size, seq_len)
             else:
-                # 最后一步，使用argmax
+                # 最后一步，使用argmax确保确定性
                 x = torch.argmax(predicted_logits, dim=-1)
         
         return x
@@ -293,7 +302,96 @@ class D3PMDiffusion:
         """DDIM采样（确定性）"""
         # 简化的DDIM实现
         return self.sample(batch_size, seq_len, esm_features, num_inference_steps)
-
+    
+    def top_k_sample(self, batch_size: int, seq_len: int, 
+                     esm_features: Optional[torch.Tensor] = None,
+                     num_inference_steps: Optional[int] = None,
+                     k: int = 10, temperature: float = 1.0) -> torch.Tensor:
+        """Top-k采样：只从概率最高的k个token中采样"""
+        if num_inference_steps is None:
+            num_inference_steps = self.scheduler.num_timesteps
+        
+        # 从随机噪声开始
+        x = torch.randint(0, self.scheduler.vocab_size, (batch_size, seq_len), 
+                         device=self.device)
+        
+        # 逆向扩散过程
+        timesteps = torch.linspace(self.scheduler.num_timesteps - 1, 0, 
+                                 num_inference_steps, dtype=torch.long, 
+                                 device=self.device)
+        
+        for i, t in enumerate(timesteps):
+            t_batch = t.repeat(batch_size)
+            predicted_logits = self.model(x, t_batch, esm_features)
+            
+            if i < len(timesteps) - 1:
+                # Top-k采样
+                scaled_logits = predicted_logits / temperature
+                
+                # 获取top-k logits
+                top_k_logits, top_k_indices = torch.topk(scaled_logits, k, dim=-1)
+                
+                # 创建掩码，只保留top-k
+                mask = torch.full_like(scaled_logits, float('-inf'))
+                mask.scatter_(-1, top_k_indices, top_k_logits)
+                
+                probs = F.softmax(mask, dim=-1)
+                x = torch.multinomial(probs.view(-1, self.scheduler.vocab_size), 
+                                    num_samples=1).view(batch_size, seq_len)
+            else:
+                x = torch.argmax(predicted_logits, dim=-1)
+        
+        return x
+    
+    def nucleus_sample(self, batch_size: int, seq_len: int, 
+                       esm_features: Optional[torch.Tensor] = None,
+                       num_inference_steps: Optional[int] = None,
+                       p: float = 0.9, temperature: float = 1.0) -> torch.Tensor:
+        """Nucleus (top-p)采样：从累积概率达到p的最小token集合中采样"""
+        if num_inference_steps is None:
+            num_inference_steps = self.scheduler.num_timesteps
+        
+        # 从随机噪声开始
+        x = torch.randint(0, self.scheduler.vocab_size, (batch_size, seq_len), 
+                         device=self.device)
+        
+        # 逆向扩散过程
+        timesteps = torch.linspace(self.scheduler.num_timesteps - 1, 0, 
+                                 num_inference_steps, dtype=torch.long, 
+                                 device=self.device)
+        
+        for i, t in enumerate(timesteps):
+            t_batch = t.repeat(batch_size)
+            predicted_logits = self.model(x, t_batch, esm_features)
+            
+            if i < len(timesteps) - 1:
+                # Nucleus采样
+                scaled_logits = predicted_logits / temperature
+                
+                # 排序概率
+                sorted_logits, sorted_indices = torch.sort(scaled_logits, descending=True, dim=-1)
+                sorted_probs = F.softmax(sorted_logits, dim=-1)
+                
+                # 计算累积概率
+                cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
+                
+                # 创建nucleus掩码
+                sorted_indices_to_remove = cumulative_probs > p
+                sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+                sorted_indices_to_remove[..., 0] = 0
+                
+                # 应用掩码
+                indices_to_remove = sorted_indices_to_remove.scatter(-1, sorted_indices, sorted_indices_to_remove)
+                scaled_logits[indices_to_remove] = float('-inf')
+                
+                probs = F.softmax(scaled_logits, dim=-1)
+                x = torch.multinomial(probs.view(-1, self.scheduler.vocab_size), 
+                                    num_samples=1).view(batch_size, seq_len)
+            else:
+                x = torch.argmax(predicted_logits, dim=-1)
+        
+        return x
+        
 
 # 导入统一的词汇表和序列处理函数
 import sys
