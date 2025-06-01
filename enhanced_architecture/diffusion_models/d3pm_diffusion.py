@@ -105,15 +105,86 @@ class D3PMScheduler:
     
     def q_posterior_mean_variance(self, x_start: torch.Tensor, x_t: torch.Tensor, 
                                  t: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """计算后验分布的均值和方差"""
-        # 简化实现，返回x_start的概率分布
+        """
+        计算后验分布 q(x_{t-1}|x_t, x_0) 的均值和方差
+        
+        基于D3PM论文的公式:
+        q(x_{t-1}|x_t, x_0) ∝ q(x_t|x_{t-1}) * q(x_{t-1}|x_0)
+        
+        Args:
+            x_start: 原始清洁序列 [batch_size, seq_len]
+            x_t: 当前时间步的噪声序列 [batch_size, seq_len]  
+            t: 时间步 [batch_size]
+        Returns:
+            posterior_mean: 后验均值 [batch_size, seq_len, vocab_size]
+            posterior_log_variance: 后验对数方差 [batch_size, seq_len, vocab_size]
+        """
         batch_size, seq_len = x_start.shape
+        device = x_start.device
+        
+        # 处理边界情况：t=0时没有前一个时间步
+        t = t.clamp(min=1)
+        
+        # 获取转移概率参数
+        alpha_cumprod_t = self.alphas_cumprod[t]  # [batch_size]
+        alpha_cumprod_t_prev = self.alphas_cumprod[t-1]  # [batch_size]
+        alpha_t = self.alphas[t]  # [batch_size]
+        
+        # 为了方便计算，将参数扩展到正确的维度
+        alpha_cumprod_t = alpha_cumprod_t.view(batch_size, 1, 1)  # [batch_size, 1, 1]
+        alpha_cumprod_t_prev = alpha_cumprod_t_prev.view(batch_size, 1, 1)
+        alpha_t = alpha_t.view(batch_size, 1, 1)
         
         # 创建one-hot编码
-        posterior_mean = F.one_hot(x_start, num_classes=self.vocab_size).float()
-        posterior_variance = torch.ones_like(posterior_mean) * 0.1
+        x_start_onehot = F.one_hot(x_start, num_classes=self.vocab_size).float()  # [batch_size, seq_len, vocab_size]
+        x_t_onehot = F.one_hot(x_t, num_classes=self.vocab_size).float()  # [batch_size, seq_len, vocab_size]
         
-        return posterior_mean, posterior_variance
+        # 计算 q(x_{t-1}|x_0) 的概率分布
+        # 对于离散扩散，这是从原始状态经过t-1步后的分布
+        q_t_minus_1_given_0 = alpha_cumprod_t_prev * x_start_onehot + \
+                              (1 - alpha_cumprod_t_prev) / self.vocab_size
+        
+        # 计算 q(x_t|x_{t-1}) 的概率分布
+        # 这需要对所有可能的x_{t-1}进行计算
+        uniform_prob = torch.ones(batch_size, seq_len, self.vocab_size, device=device) / self.vocab_size
+        
+        # 计算后验分布 q(x_{t-1}|x_t, x_0)
+        # 使用贝叶斯公式: p(A|B,C) ∝ p(B|A) * p(A|C)
+        posterior_unnormalized = torch.zeros(batch_size, seq_len, self.vocab_size, device=device)
+        
+        for k in range(self.vocab_size):
+            # 对于每个可能的 x_{t-1} = k
+            x_t_minus_1_k = torch.full_like(x_start, k)  # [batch_size, seq_len]
+            
+            # q(x_{t-1}|x_0) 在 x_{t-1} = k 时的概率
+            q_t_minus_1_k_given_0 = q_t_minus_1_given_0[:, :, k]  # [batch_size, seq_len]
+            
+            # q(x_t|x_{t-1}=k) 的概率
+            # 如果 x_t == k，概率为 alpha_t + (1-alpha_t)/vocab_size
+            # 如果 x_t != k，概率为 (1-alpha_t)/vocab_size
+            q_t_given_t_minus_1_k = torch.where(
+                x_t == k,
+                alpha_t.squeeze(-1) + (1 - alpha_t.squeeze(-1)) / self.vocab_size,
+                (1 - alpha_t.squeeze(-1)) / self.vocab_size
+            )  # [batch_size, seq_len]
+            
+            # 后验概率 ∝ q(x_t|x_{t-1}=k) * q(x_{t-1}=k|x_0)
+            posterior_unnormalized[:, :, k] = q_t_given_t_minus_1_k * q_t_minus_1_k_given_0
+        
+        # 归一化
+        posterior_sum = posterior_unnormalized.sum(dim=-1, keepdim=True)
+        posterior_sum = torch.clamp(posterior_sum, min=1e-8)  # 避免除零
+        posterior_mean = posterior_unnormalized / posterior_sum
+        
+        # 计算方差 (对于离散分布，使用概率分布的方差公式)
+        # Var[X] = E[X^2] - E[X]^2
+        # 对于分类分布，方差可以计算为 p(1-p)
+        posterior_variance = posterior_mean * (1 - posterior_mean)
+        
+        # 返回对数方差以保持数值稳定性
+        posterior_log_variance = torch.log(torch.clamp(posterior_variance, min=1e-8))
+        
+        return posterior_mean, posterior_log_variance
 
 
 class D3PMUNet(nn.Module):
