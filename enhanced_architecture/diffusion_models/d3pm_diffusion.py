@@ -286,7 +286,7 @@ class D3PMDiffusion:
     """D3PM扩散模型的主要类"""
     
     def __init__(self, model: D3PMUNet, scheduler: D3PMScheduler, 
-                 device: torch.device = torch.device('cpu')):
+                 device: torch.device = torch.device('cuda')):
         self.model = model
         self.scheduler = scheduler
         self.device = device

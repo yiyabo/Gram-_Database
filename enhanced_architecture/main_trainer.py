@@ -36,9 +36,9 @@ class EnhancedAMPTrainer:
         """
         self.config = get_config(config_name)
         # 强制使用CPU以避免MPS兼容性问题
-        self.device = torch.device("cpu")
+        # self.device = torch.device("cpu")
         # 如果在服务器上，可以改为：
-        # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         # 设置日志
         self.setup_logging()

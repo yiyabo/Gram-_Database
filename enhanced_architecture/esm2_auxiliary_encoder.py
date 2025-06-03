@@ -146,9 +146,9 @@ class ESM2AuxiliaryEncoder(nn.Module):
             logger.info("对比学习组件已启用")
         
         # 设备配置 - 强制使用CPU以避免MPS兼容性问题
-        device = "cpu"
+        # device = "cpu"
         # 如果在服务器上，可以改为：
-        # device = "cuda" if torch.cuda.is_available() else "cpu"
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         self.to(device)
         logger.info(f"ESM2AuxiliaryEncoder初始化完成，设备: {device}")
     
