@@ -456,19 +456,19 @@ class EnhancedAMPTrainer:
         self.diffusion_model.model.eval()  # 修复：使用model.eval()而不是diffusion_model.eval()
         
         with torch.no_grad():
-            # 生成随机噪声作为起点
-            shape = (num_samples, max_length)
+            # 生成随机噪声作为起点 - 修复：使用batch_size和seq_len参数
             generated_sequences = self.diffusion_model.sample(
-                shape=shape,
-                num_inference_steps=self.config.diffusion.num_inference_steps,
-                device=self.device
+                batch_size=num_samples,
+                seq_len=max_length,
+                num_inference_steps=self.config.diffusion.num_inference_steps
             )
             
             # 转换为氨基酸序列
-            tokenizer = self.diffusion_model.get_tokenizer()
             sequences = []
             for seq_tokens in generated_sequences:
-                seq_str = tokenizer.decode(seq_tokens.cpu().numpy())
+                # 导入序列转换函数
+                from data_loader import tokens_to_sequence
+                seq_str = tokens_to_sequence(seq_tokens.cpu().numpy())
                 sequences.append(seq_str)
         
         return sequences
