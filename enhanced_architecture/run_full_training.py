@@ -5,7 +5,6 @@
 
 import os
 import sys
-import time
 import argparse
 from datetime import datetime
 import subprocess
@@ -23,8 +22,8 @@ def check_dependencies():
     print("🔍 检查依赖...")
     
     required_packages = [
-        'torch', 'transformers', 'numpy', 'pandas', 
-        'scikit-learn', 'tqdm', 'tensorboard'
+        'torch', 'transformers', 'numpy', 'pandas',
+        'sklearn', 'tqdm', 'tensorboard'
     ]
     
     missing_packages = []
