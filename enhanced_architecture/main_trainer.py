@@ -453,7 +453,7 @@ class EnhancedAMPTrainer:
     
     def generate_samples(self, num_samples: int = 10, max_length: int = 50) -> List[str]:
         """生成样本序列"""
-        self.diffusion_model.eval()
+        self.diffusion_model.model.eval()  # 修复：使用model.eval()而不是diffusion_model.eval()
         
         with torch.no_grad():
             # 生成随机噪声作为起点
