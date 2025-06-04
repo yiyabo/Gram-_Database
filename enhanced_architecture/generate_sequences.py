@@ -44,8 +44,8 @@ class SequenceGenerator:
         if not os.path.exists(checkpoint_path):
             raise FileNotFoundError(f"检查点文件不存在: {checkpoint_path}")
         
-        # 加载检查点
-        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        # 加载检查点 - 修复PyTorch 2.6的weights_only问题
+        checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
         
         # 初始化ESM-2编码器
         self.esm2_encoder = ESM2AuxiliaryEncoder(self.config.esm2)
