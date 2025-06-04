@@ -74,7 +74,7 @@ class ModelTester:
         self.trainer.initialize_models()
         
         # 加载检查点
-        checkpoint = torch.load(self.checkpoint_path, map_location=self.device)
+        checkpoint = torch.load(self.checkpoint_path, map_location=self.device, weights_only=False)
         
         # 加载模型状态
         self.trainer.esm2_encoder.load_state_dict(checkpoint['esm2_encoder_state_dict'])
@@ -188,7 +188,7 @@ class ModelTester:
         """分析训练结果"""
         self.logger.info("分析训练结果...")
         
-        checkpoint = torch.load(self.checkpoint_path, map_location='cpu')
+        checkpoint = torch.load(self.checkpoint_path, map_location='cpu', weights_only=False)
         
         print("\n" + "="*60)
         print("训练结果分析")
