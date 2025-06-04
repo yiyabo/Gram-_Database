@@ -42,8 +42,7 @@ def quick_generation_test():
     try:
         generated_tokens = diffusion.sample(
             batch_size=1,
-            seq_len=20,  # 更短的序列
-            device=device
+            seq_len=20  # 更短的序列
         )
         
         sequence = tokens_to_sequence(generated_tokens[0])
@@ -94,8 +93,7 @@ def quick_generation_test():
         start_time = time.time()
         generated_tokens = diffusion.sample(
             batch_size=5,
-            seq_len=15,
-            device=device
+            seq_len=15
         )
         
         sequences = [tokens_to_sequence(tokens) for tokens in generated_tokens]
@@ -144,8 +142,7 @@ def test_generation_speed():
         try:
             generated_tokens = diffusion.sample(
                 batch_size=batch_size,
-                seq_len=20,
-                device=device
+                seq_len=20
             )
             
             elapsed = time.time() - start_time
