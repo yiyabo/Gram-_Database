@@ -95,14 +95,33 @@ def final_evaluation():
     checkpoint_path = "./output/checkpoints/latest.pt"
     if os.path.exists(checkpoint_path):
         print(f"📂 加载检查点: {checkpoint_path}")
-        checkpoint = torch.load(checkpoint_path, map_location=device)
+        try:
+            # 首先尝试安全加载
+            checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
+            print("✓ 使用安全模式加载检查点")
+        except Exception as e:
+            print(f"⚠️ 安全模式加载失败，尝试兼容模式: {e}")
+            try:
+                # 兼容模式加载
+                checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+                print("✓ 使用兼容模式加载检查点")
+            except Exception as e2:
+                print(f"❌ 检查点加载失败: {e2}")
+                print("⚠️ 使用随机初始化的模型")
+                checkpoint = None
         
         # 加载扩散模型权重
-        if 'diffusion_model_state_dict' in checkpoint:
-            diffusion.model.load_state_dict(checkpoint['diffusion_model_state_dict'])
-            print("✓ 扩散模型权重加载成功")
+        if checkpoint and 'diffusion_model_state_dict' in checkpoint:
+            try:
+                diffusion.model.load_state_dict(checkpoint['diffusion_model_state_dict'])
+                print("✓ 扩散模型权重加载成功")
+            except Exception as e:
+                print(f"⚠️ 扩散模型权重加载失败: {e}")
+                print("⚠️ 使用随机初始化的模型")
+        elif checkpoint:
+            print("⚠️ 检查点中未找到扩散模型权重，使用随机初始化")
         else:
-            print("⚠️ 未找到扩散模型权重，使用随机初始化")
+            print("⚠️ 无有效检查点，使用随机初始化的模型")
     else:
         print("⚠️ 未找到检查点文件，使用随机初始化的模型")
     
