@@ -30,8 +30,8 @@ def quick_generation_test():
     diffusion = D3PMDiffusion(
         model=unet,
         scheduler=scheduler,
-        vocab_size=vocab_size
-    ).to(device)
+        device=device
+    )
     
     print("✓ 模型创建完成")
     
@@ -134,8 +134,8 @@ def test_generation_speed():
     diffusion = D3PMDiffusion(
         model=unet,
         scheduler=scheduler,
-        vocab_size=vocab_size
-    ).to(device)
+        device=device
+    )
     
     # 测试不同batch_size的速度
     for batch_size in [1, 5, 10]:
