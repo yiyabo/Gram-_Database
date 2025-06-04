@@ -26,6 +26,9 @@ from collections import Counter
 import pickle
 import traceback # For detailed error logging
 
+# 导入生成服务
+from generation_service import get_generation_service
+
 print("!!!!!!!!!! DEBUG: app.py IS LOADING FRESHLY (Hybrid Model Version) !!!!!!!!!!")
 
 # --- Constants and functions copied/adapted from hybrid_classifier.py ---
@@ -236,7 +239,7 @@ app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 # Global variables
 APP_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT_DIR = os.path.dirname(APP_ROOT_DIR)
-KERAS_MODEL_PATH = os.path.join(PROJECT_ROOT_DIR, 'model', 'Best Hybrid Classifier.keras')
+KERAS_MODEL_PATH = os.path.join(PROJECT_ROOT_DIR, 'model', 'hybrid_classifier_best_tuned.keras')
 SCALER_PATH_APP = os.path.join(PROJECT_ROOT_DIR, 'model', 'hybrid_model_scaler.pkl')
 
 keras_model_global = None 
@@ -431,6 +434,73 @@ VFIDILDKVENAIHNAAQVGIGFAKPFEKLINPK
 >AP00006
 GNNRPVYIPQPRPPHPRI"""
     return jsonify({'fasta': example_fasta})
+
+@app.route('/generate_sequences', methods=['POST'])
+def generate_sequences_route():
+    """生成抗菌肽序列的API路由"""
+    try:
+        # 获取生成服务
+        gen_service = get_generation_service()
+        
+        # 解析请求参数
+        data = request.json
+        num_sequences = int(data.get('num_sequences', 5))
+        seq_length = int(data.get('seq_length', 40))
+        sampling_method = data.get('sampling_method', 'diverse')
+        temperature = float(data.get('temperature', 1.0))
+        reference_sequences = data.get('reference_sequences', [])
+        
+        # 参数验证
+        if num_sequences < 1 or num_sequences > 50:
+            return jsonify({'error': '序列数量必须在1-50之间'}), 400
+        
+        if seq_length < 10 or seq_length > 100:
+            return jsonify({'error': '序列长度必须在10-100之间'}), 400
+        
+        if sampling_method not in ['basic', 'diverse', 'top_k', 'nucleus']:
+            return jsonify({'error': '无效的采样方法'}), 400
+        
+        if temperature < 0.1 or temperature > 3.0:
+            return jsonify({'error': '温度参数必须在0.1-3.0之间'}), 400
+        
+        # 生成序列
+        result = gen_service.generate_sequences(
+            num_sequences=num_sequences,
+            seq_length=seq_length,
+            sampling_method=sampling_method,
+            temperature=temperature,
+            reference_sequences=reference_sequences if reference_sequences else None,
+            k=int(data.get('k', 10)),  # top_k参数
+            p=float(data.get('p', 0.9)),  # nucleus参数
+            diversity_strength=float(data.get('diversity_strength', 0.3))  # 多样性参数
+        )
+        
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'sequences': result['sequences'],
+                'parameters': result['parameters'],
+                'model_info': gen_service.get_model_info()
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result['error']
+            }), 500
+    
+    except Exception as e:
+        print(f"生成序列时发生错误: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': f'生成序列时发生内部错误: {str(e)}'}), 500
+
+@app.route('/model_status')
+def model_status():
+    """获取模型状态"""
+    try:
+        gen_service = get_generation_service()
+        return jsonify(gen_service.get_model_info())
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=8080)

@@ -43,14 +43,133 @@
                         <h5 class="mb-0"><i class="bi bi-magic"></i> Generate Gram-Negative Bacteria Peptides</h5>
                     </div>
                     <div class="card-body">
-                        <p class="lead">This section will host the interface for generating novel peptide sequences.</p>
-                        <p>Currently, the generation model is not yet integrated. This page serves as a placeholder for future development.</p>
-                        <!-- 在这里添加生成相关的表单和控件 -->
-                        <div class="text-center mt-4">
-                            <button type="button" class="btn btn-lg btn-success" disabled>
-                                <i class="bi bi-gear-wide-connected"></i> Generate Sequences (Coming Soon)
-                            </button>
+                        <p class="lead">使用AI扩散模型生成新的抗革兰氏阴性菌肽序列</p>
+                        
+                        <!-- 生成参数表单 -->
+                        <form id="generateForm">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="numSequences" class="form-label">序列数量</label>
+                                        <input type="number" class="form-control" id="numSequences" min="1" max="50" value="5">
+                                        <div class="form-text">生成1-50条序列</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="seqLength" class="form-label">序列长度</label>
+                                        <input type="number" class="form-control" id="seqLength" min="10" max="100" value="40">
+                                        <div class="form-text">序列长度10-100个氨基酸</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="samplingMethod" class="form-label">采样方法</label>
+                                        <select class="form-select" id="samplingMethod">
+                                            <option value="diverse" selected>多样性采样 (推荐)</option>
+                                            <option value="top_k">Top-K采样</option>
+                                            <option value="nucleus">Nucleus采样</option>
+                                            <option value="basic">基础采样</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="temperature" class="form-label">温度参数</label>
+                                        <input type="range" class="form-range" id="temperature" min="0.1" max="2.0" step="0.1" value="1.0">
+                                        <div class="form-text">当前值: <span id="tempValue">1.0</span> (越高越随机)</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 高级参数 -->
+                            <div class="mb-3">
+                                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#advancedParams">
+                                    <i class="bi bi-gear"></i> 高级参数
+                                </button>
+                            </div>
+                            
+                            <div class="collapse" id="advancedParams">
+                                <div class="card card-body mb-3">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label for="topK" class="form-label">Top-K值</label>
+                                                <input type="number" class="form-control" id="topK" min="1" max="20" value="10">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label for="nucleusP" class="form-label">Nucleus P值</label>
+                                                <input type="number" class="form-control" id="nucleusP" min="0.1" max="1.0" step="0.1" value="0.9">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label for="diversityStrength" class="form-label">多样性强度</label>
+                                                <input type="number" class="form-control" id="diversityStrength" min="0.0" max="1.0" step="0.1" value="0.3">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 参考序列 -->
+                            <div class="mb-3">
+                                <label for="referenceSeqs" class="form-label">参考序列 (可选)</label>
+                                <textarea class="form-control" id="referenceSeqs" rows="3" placeholder="输入参考序列，每行一个，用于条件生成"></textarea>
+                                <div class="form-text">基于参考序列生成相似的新序列</div>
+                            </div>
+                            
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-lg btn-success" id="generateBtn">
+                                    <i class="bi bi-magic"></i> 生成序列
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- 加载状态 -->
+                    <div id="loadingSection" class="text-center mt-4" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">生成中...</span>
                         </div>
+                        <p class="mt-2">正在生成序列，请稍候...</p>
+                    </div>
+                    
+                    <!-- 结果显示区域 -->
+                    <div id="resultsSection" style="display: none;">
+                        <div class="card mt-4">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0"><i class="bi bi-check-circle"></i> 生成结果</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="generationStats" class="mb-3"></div>
+                                <div id="sequenceResults"></div>
+                                
+                                <!-- 操作按钮 -->
+                                <div class="text-center mt-3">
+                                    <button type="button" class="btn btn-primary" id="predictBtn">
+                                        <i class="bi bi-search"></i> 预测抗菌活性
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="exportBtn">
+                                        <i class="bi bi-download"></i> 导出序列
+                                    </button>
+                                    <button type="button" class="btn btn-outline-info" id="copyBtn">
+                                        <i class="bi bi-clipboard"></i> 复制FASTA
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 错误显示区域 -->
+                    <div id="errorSection" class="alert alert-danger mt-4" style="display: none;">
+                        <h6><i class="bi bi-exclamation-triangle"></i> 错误</h6>
+                        <p id="errorMessage"></p>
                     </div>
                 </div>
             </div>
@@ -71,7 +190,198 @@
 
     <!-- JavaScript 依赖 -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- 如果需要特定的JS进行生成，可以在这里添加 -->
-    <!-- <script src="{{ url_for('static', filename='js/generate.js') }}"></script> -->
+    
+    <script>
+        let generatedSequences = [];
+        
+        // 温度滑块更新
+        document.getElementById('temperature').addEventListener('input', function() {
+            document.getElementById('tempValue').textContent = this.value;
+        });
+        
+        // 生成表单提交
+        document.getElementById('generateForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // 获取表单数据
+            const formData = {
+                num_sequences: parseInt(document.getElementById('numSequences').value),
+                seq_length: parseInt(document.getElementById('seqLength').value),
+                sampling_method: document.getElementById('samplingMethod').value,
+                temperature: parseFloat(document.getElementById('temperature').value),
+                k: parseInt(document.getElementById('topK').value),
+                p: parseFloat(document.getElementById('nucleusP').value),
+                diversity_strength: parseFloat(document.getElementById('diversityStrength').value),
+                reference_sequences: document.getElementById('referenceSeqs').value
+                    .split('\n')
+                    .map(s => s.trim())
+                    .filter(s => s.length > 0)
+            };
+            
+            // 显示加载状态
+            showLoading();
+            
+            try {
+                const response = await fetch('/generate_sequences', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    generatedSequences = result.sequences;
+                    showResults(result);
+                } else {
+                    showError(result.error || '生成失败');
+                }
+            } catch (error) {
+                showError('网络错误: ' + error.message);
+            }
+        });
+        
+        // 预测按钮点击
+        document.getElementById('predictBtn').addEventListener('click', async function() {
+            if (generatedSequences.length === 0) {
+                alert('请先生成序列');
+                return;
+            }
+            
+            // 创建FASTA格式数据
+            let fastaText = '';
+            generatedSequences.forEach(seq => {
+                fastaText += `>${seq.id}\n${seq.sequence}\n`;
+            });
+            
+            // 跳转到预测页面并自动填充数据
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/predict';
+            
+            const input = document.createElement('textarea');
+            input.name = 'fasta_text';
+            input.value = fastaText;
+            form.appendChild(input);
+            
+            document.body.appendChild(form);
+            form.submit();
+        });
+        
+        // 导出按钮点击
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            if (generatedSequences.length === 0) {
+                alert('请先生成序列');
+                return;
+            }
+            
+            const data = generatedSequences.map(seq => ({
+                id: seq.id,
+                sequence: seq.sequence,
+                length: seq.length,
+                method: seq.method
+            }));
+            
+            fetch('/export', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    format: 'csv',
+                    results: data
+                })
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'generated_sequences.csv';
+                a.click();
+                window.URL.revokeObjectURL(url);
+            });
+        });
+        
+        // 复制FASTA按钮点击
+        document.getElementById('copyBtn').addEventListener('click', function() {
+            if (generatedSequences.length === 0) {
+                alert('请先生成序列');
+                return;
+            }
+            
+            let fastaText = '';
+            generatedSequences.forEach(seq => {
+                fastaText += `>${seq.id}\n${seq.sequence}\n`;
+            });
+            
+            navigator.clipboard.writeText(fastaText).then(() => {
+                alert('FASTA序列已复制到剪贴板');
+            });
+        });
+        
+        function showLoading() {
+            document.getElementById('loadingSection').style.display = 'block';
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('errorSection').style.display = 'none';
+            document.getElementById('generateBtn').disabled = true;
+        }
+        
+        function showResults(result) {
+            document.getElementById('loadingSection').style.display = 'none';
+            document.getElementById('errorSection').style.display = 'none';
+            document.getElementById('generateBtn').disabled = false;
+            
+            // 显示统计信息
+            const stats = `
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <h6>生成序列数</h6>
+                        <span class="badge bg-primary fs-6">${result.sequences.length}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <h6>采样方法</h6>
+                        <span class="badge bg-info fs-6">${result.parameters.sampling_method}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <h6>平均长度</h6>
+                        <span class="badge bg-success fs-6">${Math.round(result.sequences.reduce((sum, seq) => sum + seq.length, 0) / result.sequences.length)}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <h6>温度参数</h6>
+                        <span class="badge bg-warning fs-6">${result.parameters.temperature}</span>
+                    </div>
+                </div>
+            `;
+            document.getElementById('generationStats').innerHTML = stats;
+            
+            // 显示序列
+            let sequenceHtml = '<div class="table-responsive"><table class="table table-striped"><thead><tr><th>ID</th><th>序列</th><th>长度</th></tr></thead><tbody>';
+            result.sequences.forEach(seq => {
+                sequenceHtml += `
+                    <tr>
+                        <td><code>${seq.id}</code></td>
+                        <td><code class="text-break">${seq.sequence}</code></td>
+                        <td><span class="badge bg-secondary">${seq.length}</span></td>
+                    </tr>
+                `;
+            });
+            sequenceHtml += '</tbody></table></div>';
+            document.getElementById('sequenceResults').innerHTML = sequenceHtml;
+            
+            document.getElementById('resultsSection').style.display = 'block';
+        }
+        
+        function showError(message) {
+            document.getElementById('loadingSection').style.display = 'none';
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('generateBtn').disabled = false;
+            
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorSection').style.display = 'block';
+        }
+    </script>
 </body>
 </html>

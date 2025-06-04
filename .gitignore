@@ -58,3 +58,10 @@ enhanced_architecture/output/tensorboard/events.out.tfevents.*
 # temp_*.csv
 .aider*
 --api_keys={'gemini': 'AIzaSyDmq6anTIob-5otVDfdAWrQy3NHQjio8Z8'}
+# 模型文件 - 太大不适合Git
+gram_predictor/models/*.pt
+gram_predictor/models/*.pth
+gram_predictor/models/*.h5
+gram_predictor/models/*.keras
+*.pt
+*.pth
