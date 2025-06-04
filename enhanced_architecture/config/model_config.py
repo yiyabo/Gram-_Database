@@ -37,13 +37,13 @@ class DiffusionConfig:
 class ESM2Config:
     """ESM-2辅助编码器配置"""
     # ESM-2模型参数
-    model_name: str = "facebook/esm2_t6_8M_UR50D"  # ESM-2 8M参数模型（快速测试用）
+    model_name: str = "facebook/esm2_t12_35M_UR50D"  # ESM-2 35M参数模型（推荐用于双4090）
     freeze_esm: bool = True  # 是否冻结ESM-2参数
     
     # 特征提取参数
     extract_layers: List[int] = None  # 提取哪些层的特征，None表示最后一层
     pooling_method: str = 'attention'  # 'mean', 'max', 'attention', 'cls'
-    feature_dim: int = 320  # ESM-2 8M的特征维度
+    feature_dim: int = 480  # ESM-2 35M的特征维度
     
     # 特征融合参数
     fusion_method: str = 'contrastive'  # 'mean', 'weighted_mean', 'clustering', 'contrastive'
@@ -295,13 +295,48 @@ def get_production_config() -> ModelConfig:
     
     return config
 
+def get_dual_4090_config() -> ModelConfig:
+    """获取双4090优化配置（48GB显存，高性能训练）"""
+    config = get_default_config()
+    
+    # 使用更大的ESM-2模型
+    config.esm2.model_name = "facebook/esm2_t30_150M_UR50D"  # 150M参数，最佳性能
+    config.esm2.feature_dim = 640  # ESM-2 150M的特征维度
+    config.esm2.freeze_esm = False  # 解冻ESM-2进行微调（显存充足时）
+    config.esm2.batch_size = 16  # 适合大模型的批次大小
+    
+    # 扩散模型配置
+    config.diffusion.hidden_dim = 1024  # 更大的隐藏层
+    config.diffusion.num_layers = 16    # 更深的网络
+    config.diffusion.num_heads = 16     # 更多注意力头
+    config.diffusion.max_seq_len = 150  # 支持更长序列
+    
+    # 训练配置
+    config.training.num_epochs = 300
+    config.training.learning_rate = 3e-5
+    config.training.esm_learning_rate = 5e-6  # ESM-2微调用更小学习率
+    config.training.use_mixed_precision = True
+    config.training.use_distributed = True  # 启用多GPU训练
+    
+    # 数据配置
+    config.data.batch_size = 32  # 充分利用显存
+    config.data.max_sequence_length = 150
+    config.data.num_workers = 8  # 更多数据加载进程
+    
+    # 启用所有高级功能
+    config.esm2.cache_features = True
+    config.training.use_wandb = True
+    config.training.use_tensorboard = True
+    
+    return config
+
 
 def get_config(config_name: str = "default") -> ModelConfig:
     """
     根据配置名称获取配置
     
     Args:
-        config_name: 配置名称 ('default', 'quick_test', 'production')
+        config_name: 配置名称 ('default', 'quick_test', 'production', 'dual_4090')
         
     Returns:
         模型配置
@@ -312,8 +347,10 @@ def get_config(config_name: str = "default") -> ModelConfig:
         return get_quick_test_config()
     elif config_name == "production":
         return get_production_config()
+    elif config_name == "dual_4090":
+        return get_dual_4090_config()
     else:
-        raise ValueError(f"未知的配置名称: {config_name}")
+        raise ValueError(f"未知的配置名称: {config_name}. 可用选项: 'default', 'quick_test', 'production', 'dual_4090'")
 
 
 if __name__ == "__main__":

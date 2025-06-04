@@ -11,10 +11,10 @@ def main():
     """主函数"""
     parser = argparse.ArgumentParser(description="增强型抗菌肽生成模型训练")
     parser.add_argument(
-        "--config", 
-        type=str, 
+        "--config",
+        type=str,
         default="quick_test",
-        choices=["default", "quick_test", "production"],
+        choices=["default", "quick_test", "production", "dual_4090"],
         help="配置名称"
     )
     parser.add_argument(
