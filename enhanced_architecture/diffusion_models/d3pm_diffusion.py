@@ -81,12 +81,16 @@ class D3PMScheduler:
                  noise: Optional[torch.Tensor] = None) -> torch.Tensor:
         """前向扩散过程，给干净序列添加噪声"""
         if noise is None:
-            # 生成随机噪声 (随机选择token)
-            noise = torch.randint(0, self.vocab_size, x_start.shape, 
+            # 生成随机噪声 (随机选择非PAD token)
+            # 确保噪声不包含PAD token (0)
+            noise = torch.randint(1, self.vocab_size, x_start.shape, 
                                 device=x_start.device)
         
         # 矢量化实现：更高效的批量处理
         batch_size, seq_len = x_start.shape
+        
+        # 创建PAD掩码：PAD位置永远不变
+        pad_mask = (x_start == 0)  # PAD token = 0
         
         # 获取每个样本对应的alpha_cumprod_t
         alpha_cumprod_t = self.alphas_cumprod[t]  # [batch_size]
@@ -100,6 +104,9 @@ class D3PMScheduler:
         
         # 应用掩码：保持原token或使用噪声
         x_noisy = torch.where(keep_mask, x_start, noise)
+        
+        # 确保PAD位置永远不变
+        x_noisy = torch.where(pad_mask, x_start, x_noisy)
         
         return x_noisy
     
@@ -312,11 +319,21 @@ class D3PMDiffusion:
         # 预测去噪后的logits
         predicted_logits = self.model(x_noisy, t, esm_features)
         
-        # 计算交叉熵损失，忽略PAD token (index=0)
+        # 创建掩码，只在非PAD位置计算损失
+        non_pad_mask = (x_start != 0)  # PAD token = 0
+        
+        if non_pad_mask.sum() == 0:
+            # 如果所有位置都是PAD，返回零损失
+            return torch.tensor(0.0, device=self.device, requires_grad=True)
+        
+        # 只在非PAD位置计算损失
+        masked_logits = predicted_logits[non_pad_mask]  # [num_non_pad, vocab_size]
+        masked_targets = x_start[non_pad_mask]  # [num_non_pad]
+        
+        # 计算交叉熵损失
         loss = F.cross_entropy(
-            predicted_logits.view(-1, self.scheduler.vocab_size),
-            x_start.view(-1),
-            ignore_index=0,  # 忽略PAD token，防止模型学习PAD分布
+            masked_logits,
+            masked_targets,
             reduction='mean'
         )
         
@@ -340,8 +357,8 @@ class D3PMDiffusion:
         if num_inference_steps is None:
             num_inference_steps = self.scheduler.num_timesteps
         
-        # 从随机噪声开始
-        x = torch.randint(0, self.scheduler.vocab_size, (batch_size, seq_len), 
+        # 从随机氨基酸开始（不包含PAD token）
+        x = torch.randint(1, self.scheduler.vocab_size, (batch_size, seq_len), 
                          device=self.device)
         
         # 逆向扩散过程
@@ -354,6 +371,9 @@ class D3PMDiffusion:
             
             # 预测去噪后的logits
             predicted_logits = self.model(x, t_batch, esm_features)
+            
+            # 屏蔽PAD token的概率，避免生成PAD
+            predicted_logits[:, :, 0] = float('-inf')  # PAD token probability = 0
             
             # 采样下一个状态
             if i < len(timesteps) - 1:
@@ -383,8 +403,8 @@ class D3PMDiffusion:
         if num_inference_steps is None:
             num_inference_steps = self.scheduler.num_timesteps
         
-        # 从随机噪声开始
-        x = torch.randint(0, self.scheduler.vocab_size, (batch_size, seq_len), 
+        # 从随机氨基酸开始（不包含PAD token）
+        x = torch.randint(1, self.scheduler.vocab_size, (batch_size, seq_len), 
                          device=self.device)
         
         # 逆向扩散过程
@@ -395,6 +415,9 @@ class D3PMDiffusion:
         for i, t in enumerate(timesteps):
             t_batch = t.repeat(batch_size)
             predicted_logits = self.model(x, t_batch, esm_features)
+            
+            # 屏蔽PAD token
+            predicted_logits[:, :, 0] = float('-inf')
             
             if i < len(timesteps) - 1:
                 # Top-k采样
@@ -423,8 +446,8 @@ class D3PMDiffusion:
         if num_inference_steps is None:
             num_inference_steps = self.scheduler.num_timesteps
         
-        # 从随机噪声开始
-        x = torch.randint(0, self.scheduler.vocab_size, (batch_size, seq_len), 
+        # 从随机氨基酸开始（不包含PAD token）
+        x = torch.randint(1, self.scheduler.vocab_size, (batch_size, seq_len), 
                          device=self.device)
         
         # 逆向扩散过程
@@ -435,6 +458,9 @@ class D3PMDiffusion:
         for i, t in enumerate(timesteps):
             t_batch = t.repeat(batch_size)
             predicted_logits = self.model(x, t_batch, esm_features)
+            
+            # 屏蔽PAD token
+            predicted_logits[:, :, 0] = float('-inf')
             
             if i < len(timesteps) - 1:
                 # Nucleus采样
