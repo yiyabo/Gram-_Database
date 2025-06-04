@@ -26,7 +26,7 @@ find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 echo "✅ 清理完成！"
 echo ""
 echo "🚀 开始重新训练..."
-echo "使用配置: dual_4090 (针对双4090优化)"
+echo "使用专门的双4090优化训练脚本"
 echo ""
 
 # 检查GPU状态
@@ -37,8 +37,12 @@ echo ""
 echo "⏰ 开始训练时间: $(date)"
 echo ""
 
-# 开始训练
-python start_training.py --config dual_4090
+# 设置CUDA优化环境变量
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export CUDA_LAUNCH_BLOCKING=0
+
+# 开始训练 - 使用专门的双4090训练脚本
+python train_dual_4090.py --config dual_4090
 
 echo ""
 echo "⏰ 训练结束时间: $(date)"
