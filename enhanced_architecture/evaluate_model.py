@@ -110,17 +110,58 @@ class ModelTester:
         self.logger.info(f"生成 {num_samples} 个序列，最大长度: {max_length}")
         
         try:
-            # 使用训练器的生成方法
-            generated_sequences = self.trainer.generate_samples(
-                num_samples=num_samples, 
-                max_length=max_length
-            )
+            # 使用扩散模型直接生成，并添加调试信息
+            self.trainer.diffusion_model.model.eval()
             
-            self.logger.info(f"序列生成完成，成功生成 {len(generated_sequences)} 个序列")
-            return generated_sequences
+            with torch.no_grad():
+                # 生成token序列
+                generated_tokens = self.trainer.diffusion_model.sample(
+                    batch_size=num_samples,
+                    seq_len=max_length,
+                    num_inference_steps=self.config.diffusion.num_inference_steps
+                )
+                
+                # 调试信息：打印原始token值
+                self.logger.info(f"生成的原始token张量形状: {generated_tokens.shape}")
+                self.logger.info(f"Token值范围: {generated_tokens.min().item()} - {generated_tokens.max().item()}")
+                
+                # 检查词汇表映射
+                from data_loader import VOCAB_TO_AA
+                self.logger.info(f"词汇表映射: {VOCAB_TO_AA}")
+                
+                # 转换为氨基酸序列
+                sequences = []
+                for i, seq_tokens in enumerate(generated_tokens):
+                    # 调试信息：打印每个序列的token值
+                    tokens_numpy = seq_tokens.cpu().numpy()
+                    self.logger.info(f"序列 {i+1} 原始tokens前10个: {tokens_numpy[:10]}")
+                    
+                    # 手动检查转换过程
+                    sequence_parts = []
+                    token_debug = []
+                    for j, token in enumerate(tokens_numpy[:10]):  # 只检查前10个token
+                        aa = VOCAB_TO_AA.get(int(token), 'X')
+                        token_debug.append(f"{int(token)}→{aa}")
+                        if aa != 'PAD':
+                            sequence_parts.append(aa)
+                    
+                    self.logger.info(f"序列 {i+1} token转换: {token_debug}")
+                    
+                    # 使用标准转换函数
+                    from data_loader import tokens_to_sequence
+                    auto_seq = tokens_to_sequence(seq_tokens.cpu().numpy())
+                    
+                    self.logger.info(f"序列 {i+1} 转换结果: '{auto_seq}' (长度: {len(auto_seq)})")
+                    
+                    sequences.append(auto_seq)
+            
+            self.logger.info(f"序列生成完成，成功生成 {len(sequences)} 个序列")
+            return sequences
             
         except Exception as e:
             self.logger.error(f"序列生成失败: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
             return []
     
     def evaluate_sequences(self, sequences: List[str]) -> EvaluationMetrics:
