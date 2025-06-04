@@ -16,10 +16,10 @@ from typing import List, Dict
 # 添加项目根目录到Python路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from config.model_config import ModelConfig
-from main_trainer import AntimicrobialPeptideTrainer
+from config.model_config import get_config
+from main_trainer import EnhancedAMPTrainer
 from evaluation.evaluator import ModelEvaluator, EvaluationMetrics
-from data_loader import AntimicrobialDataLoader, tokens_to_sequence
+from data_loader import tokens_to_sequence
 
 class ModelTester:
     """模型测试和评估器"""
@@ -32,8 +32,9 @@ class ModelTester:
             config_name: 配置名称 (production/quick_test)
             checkpoint_name: 检查点文件名 (best.pt/latest.pt)
         """
-        self.config = ModelConfig(config_name)
-        self.checkpoint_path = Path(self.config.training.checkpoint_dir) / checkpoint_name
+        self.config_name = config_name
+        self.config = get_config(config_name)
+        self.checkpoint_path = Path(self.config.training.output_dir) / "checkpoints" / checkpoint_name
         
         # 设置日志
         self.setup_logging()
@@ -67,26 +68,28 @@ class ModelTester:
             raise FileNotFoundError(f"检查点文件不存在: {self.checkpoint_path}")
         
         # 初始化训练器
-        self.trainer = AntimicrobialPeptideTrainer(self.config)
+        self.trainer = EnhancedAMPTrainer(config_name=self.config_name)
+        
+        # 初始化模型组件
+        self.trainer.initialize_models()
         
         # 加载检查点
         checkpoint = torch.load(self.checkpoint_path, map_location=self.device)
         
         # 加载模型状态
-        self.trainer.diffusion_model.load_state_dict(checkpoint['diffusion_model_state_dict'])
         self.trainer.esm2_encoder.load_state_dict(checkpoint['esm2_encoder_state_dict'])
+        self.trainer.diffusion_model.model.load_state_dict(checkpoint['diffusion_model_state_dict'])
         
         # 设置为评估模式
-        self.trainer.diffusion_model.eval()
         self.trainer.esm2_encoder.eval()
+        self.trainer.diffusion_model.model.eval()
         
         self.logger.info(f"模型加载成功，训练epoch: {checkpoint.get('epoch', 'unknown')}")
-        self.logger.info(f"最佳损失: {checkpoint.get('best_loss', 'unknown')}")
+        self.logger.info(f"最佳验证损失: {checkpoint.get('best_val_loss', 'unknown')}")
     
     def initialize_evaluator(self):
         """初始化评估器"""
-        self.evaluator = ModelEvaluator(self.config)
-        self.data_loader = AntimicrobialDataLoader(self.config)
+        self.evaluator = ModelEvaluator(self.config.evaluation)
         
         self.logger.info("评估器初始化完成")
     
@@ -106,45 +109,19 @@ class ModelTester:
         
         self.logger.info(f"生成 {num_samples} 个序列，最大长度: {max_length}")
         
-        generated_sequences = []
-        batch_size = 20  # 批次大小
-        
-        with torch.no_grad():
-            for i in range(0, num_samples, batch_size):
-                current_batch_size = min(batch_size, num_samples - i)
-                
-                try:
-                    # 生成序列token
-                    generated_tokens = self.trainer.diffusion_model.sample(
-                        batch_size=current_batch_size,
-                        seq_len=max_length,
-                        num_inference_steps=self.config.diffusion.num_inference_steps
-                    )
-                    
-                    # 转换为氨基酸序列
-                    for tokens in generated_tokens:
-                        try:
-                            # 转换为CPU numpy数组
-                            tokens_np = tokens.cpu().numpy()
-                            
-                            # 转换为序列字符串
-                            sequence = tokens_to_sequence(tokens_np)
-                            
-                            if sequence and len(sequence) > 0:
-                                generated_sequences.append(sequence)
-                            
-                        except Exception as e:
-                            self.logger.warning(f"序列转换失败: {e}")
-                            continue
-                
-                except Exception as e:
-                    self.logger.error(f"生成批次 {i//batch_size + 1} 失败: {e}")
-                    continue
-                
-                self.logger.info(f"已生成 {len(generated_sequences)} / {num_samples} 个序列")
-        
-        self.logger.info(f"序列生成完成，成功生成 {len(generated_sequences)} 个序列")
-        return generated_sequences
+        try:
+            # 使用训练器的生成方法
+            generated_sequences = self.trainer.generate_samples(
+                num_samples=num_samples, 
+                max_length=max_length
+            )
+            
+            self.logger.info(f"序列生成完成，成功生成 {len(generated_sequences)} 个序列")
+            return generated_sequences
+            
+        except Exception as e:
+            self.logger.error(f"序列生成失败: {e}")
+            return []
     
     def evaluate_sequences(self, sequences: List[str]) -> EvaluationMetrics:
         """
@@ -219,8 +196,7 @@ class ModelTester:
         
         print(f"检查点文件: {self.checkpoint_path}")
         print(f"训练Epoch: {checkpoint.get('epoch', 'unknown')}")
-        print(f"最佳损失: {checkpoint.get('best_loss', 'unknown'):.6f}")
-        print(f"当前损失: {checkpoint.get('current_loss', 'unknown')}")
+        print(f"最佳验证损失: {checkpoint.get('best_val_loss', 'unknown'):.6f}")
         
         # 分析模型大小
         diffusion_params = sum(p.numel() for p in checkpoint['diffusion_model_state_dict'].values())
@@ -232,9 +208,9 @@ class ModelTester:
         print(f"- 总参数量: {diffusion_params + esm2_params:,}")
         
         print("\n配置信息:")
-        print(f"- 词汇表大小: {self.config.model.vocab_size}")
-        print(f"- 最大序列长度: {self.config.model.max_sequence_length}")
-        print(f"- 隐藏维度: {self.config.model.hidden_dim}")
+        print(f"- 词汇表大小: {self.config.diffusion.vocab_size}")
+        print(f"- 最大序列长度: {self.config.diffusion.max_seq_len}")
+        print(f"- 隐藏维度: {self.config.diffusion.hidden_dim}")
         print(f"- 扩散步数: {self.config.diffusion.num_timesteps}")
         
         print("="*60)
