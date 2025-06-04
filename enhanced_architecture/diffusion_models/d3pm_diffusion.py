@@ -489,6 +489,94 @@ class D3PMDiffusion:
                 x = torch.argmax(predicted_logits, dim=-1)
         
         return x
+    
+    def diverse_sample(self, batch_size: int, seq_len: int, 
+                      esm_features: Optional[torch.Tensor] = None,
+                      num_inference_steps: Optional[int] = None,
+                      diversity_strength: float = 0.3, 
+                      temperature: float = 1.0) -> torch.Tensor:
+        """
+        多样性感知采样：防止过度生成某些氨基酸
+        
+        Args:
+            batch_size: 批次大小
+            seq_len: 序列长度
+            esm_features: ESM-2特征（可选）
+            num_inference_steps: 推理步数
+            diversity_strength: 多样性强度 (0-1)
+            temperature: 采样温度
+        """
+        if num_inference_steps is None:
+            num_inference_steps = self.scheduler.num_timesteps
+        
+        # 设置目标氨基酸分布（基于训练数据）
+        target_distribution = {
+            'K': 0.1136, 'G': 0.1045, 'L': 0.0897, 'R': 0.0888, 'A': 0.0719,
+            'I': 0.0612, 'V': 0.0577, 'P': 0.0569, 'S': 0.0500, 'C': 0.0459,
+            'F': 0.0436, 'T': 0.0362, 'N': 0.0320, 'Q': 0.0248, 'D': 0.0247,
+            'E': 0.0238, 'W': 0.0216, 'Y': 0.0209, 'H': 0.0198, 'M': 0.0122
+        }
+        
+        # 转换为token分布
+        target_token_probs = torch.zeros(self.scheduler.vocab_size, device=self.device)
+        for aa, prob in target_distribution.items():
+            if aa in AMINO_ACID_VOCAB:
+                token_id = AMINO_ACID_VOCAB[aa]
+                target_token_probs[token_id] = prob
+        target_token_probs = target_token_probs / target_token_probs.sum()
+        
+        # 从随机氨基酸开始（不包含PAD token）
+        x = torch.randint(1, self.scheduler.vocab_size, (batch_size, seq_len), 
+                         device=self.device)
+        
+        # 逆向扩散过程
+        timesteps = torch.linspace(self.scheduler.num_timesteps - 1, 0, 
+                                 num_inference_steps, dtype=torch.long, 
+                                 device=self.device)
+        
+        for i, t in enumerate(timesteps):
+            t_batch = t.repeat(batch_size)
+            predicted_logits = self.model(x, t_batch, esm_features)
+            
+            # 屏蔽PAD token
+            predicted_logits[:, :, 0] = float('-inf')
+            
+            # 应用多样性调整
+            if diversity_strength > 0:
+                # 计算当前序列的氨基酸分布
+                current_distributions = []
+                for b in range(batch_size):
+                    current_counts = torch.bincount(x[b], minlength=self.scheduler.vocab_size).float()
+                    current_dist = current_counts / (current_counts.sum() + 1e-8)
+                    current_distributions.append(current_dist)
+                current_distributions = torch.stack(current_distributions)
+                
+                # 计算分布偏差调整
+                diversity_adjustment = torch.zeros_like(predicted_logits)
+                for b in range(batch_size):
+                    for pos in range(seq_len):
+                        # 惩罚过度出现的氨基酸
+                        overpresented = current_distributions[b] > target_token_probs * 1.5
+                        diversity_adjustment[b, pos, overpresented] = -diversity_strength * 3
+                        
+                        # 奖励不足的氨基酸
+                        underpresented = current_distributions[b] < target_token_probs * 0.5
+                        diversity_adjustment[b, pos, underpresented] = diversity_strength * 2
+                
+                predicted_logits = predicted_logits + diversity_adjustment
+            
+            # 采样下一个状态
+            if i < len(timesteps) - 1:
+                # 温度缩放和采样
+                scaled_logits = predicted_logits / temperature
+                probs = F.softmax(scaled_logits, dim=-1)
+                x = torch.multinomial(probs.view(-1, self.scheduler.vocab_size), 
+                                    num_samples=1).view(batch_size, seq_len)
+            else:
+                # 最后一步，使用argmax
+                x = torch.argmax(predicted_logits, dim=-1)
+        
+        return x
         
 
 # 导入统一的词汇表和序列处理函数
