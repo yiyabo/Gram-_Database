@@ -437,12 +437,12 @@ GNNRPVYIPQPRPPHPRI"""
 
 @app.route('/generate_sequences', methods=['POST'])
 def generate_sequences_route():
-    """生成抗菌肽序列的API路由"""
+    """API route for generating antimicrobial peptide sequences."""
     try:
-        # 获取生成服务
+        # Get generation service
         gen_service = get_generation_service()
         
-        # 解析请求参数
+        # Parse request parameters
         data = request.json
         num_sequences = int(data.get('num_sequences', 5))
         seq_length = int(data.get('seq_length', 40))
@@ -450,29 +450,29 @@ def generate_sequences_route():
         temperature = float(data.get('temperature', 1.0))
         reference_sequences = data.get('reference_sequences', [])
         
-        # 参数验证
+        # Parameter validation
         if num_sequences < 1 or num_sequences > 50:
-            return jsonify({'error': '序列数量必须在1-50之间'}), 400
+            return jsonify({'error': 'Number of sequences must be between 1 and 50.'}), 400
         
         if seq_length < 10 or seq_length > 100:
-            return jsonify({'error': '序列长度必须在10-100之间'}), 400
+            return jsonify({'error': 'Sequence length must be between 10 and 100.'}), 400
         
         if sampling_method not in ['basic', 'diverse', 'top_k', 'nucleus']:
-            return jsonify({'error': '无效的采样方法'}), 400
+            return jsonify({'error': 'Invalid sampling method.'}), 400
         
         if temperature < 0.1 or temperature > 3.0:
-            return jsonify({'error': '温度参数必须在0.1-3.0之间'}), 400
+            return jsonify({'error': 'Temperature must be between 0.1 and 3.0.'}), 400
         
-        # 生成序列
+        # Generate sequences
         result = gen_service.generate_sequences(
             num_sequences=num_sequences,
             seq_length=seq_length,
             sampling_method=sampling_method,
             temperature=temperature,
             reference_sequences=reference_sequences if reference_sequences else None,
-            k=int(data.get('k', 10)),  # top_k参数
-            p=float(data.get('p', 0.9)),  # nucleus参数
-            diversity_strength=float(data.get('diversity_strength', 0.3))  # 多样性参数
+            k=int(data.get('k', 10)),  # top_k parameter
+            p=float(data.get('p', 0.9)),  # nucleus parameter
+            diversity_strength=float(data.get('diversity_strength', 0.3))  # diversity parameter
         )
         
         if result['success']:
@@ -489,13 +489,13 @@ def generate_sequences_route():
             }), 500
     
     except Exception as e:
-        print(f"生成序列时发生错误: {str(e)}")
+        print(f"Error during sequence generation: {str(e)}")
         traceback.print_exc()
-        return jsonify({'error': f'生成序列时发生内部错误: {str(e)}'}), 500
+        return jsonify({'error': f'Internal server error during sequence generation: {str(e)}'}), 500
 
 @app.route('/model_status')
 def model_status():
-    """获取模型状态"""
+    """Get model status."""
     try:
         gen_service = get_generation_service()
         return jsonify(gen_service.get_model_info())
