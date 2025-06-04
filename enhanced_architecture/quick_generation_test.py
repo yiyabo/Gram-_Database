@@ -21,10 +21,10 @@ def quick_generation_test():
     
     unet = D3PMUNet(
         vocab_size=vocab_size,
-        seq_len=30,
         hidden_dim=256,  # 减小hidden_dim
         num_layers=4,    # 减少层数
-        num_heads=8
+        num_heads=8,
+        max_seq_len=30   # 正确的参数名
     )
     
     diffusion = D3PMDiffusion(
@@ -125,10 +125,10 @@ def test_generation_speed():
     
     unet = D3PMUNet(
         vocab_size=vocab_size,
-        seq_len=30,
         hidden_dim=128,  # 很小的hidden_dim
         num_layers=2,    # 很少的层数
-        num_heads=4
+        num_heads=4,
+        max_seq_len=30   # 正确的参数名
     )
     
     diffusion = D3PMDiffusion(
