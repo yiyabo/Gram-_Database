@@ -162,6 +162,18 @@
                                         <i class="bi bi-clipboard"></i> 复制FASTA
                                     </button>
                                 </div>
+                                
+                                <!-- 预测结果显示区域 -->
+                                <div id="predictionResults" style="display: none;" class="mt-4">
+                                    <div class="card">
+                                        <div class="card-header bg-info text-white">
+                                            <h6 class="mb-0"><i class="bi bi-graph-up"></i> 抗菌活性预测结果</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="predictionContent"></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -250,24 +262,42 @@
                 return;
             }
             
-            // 创建FASTA格式数据
-            let fastaText = '';
-            generatedSequences.forEach(seq => {
-                fastaText += `>${seq.id}\n${seq.sequence}\n`;
-            });
+            // 显示加载状态
+            const predictBtn = document.getElementById('predictBtn');
+            const originalText = predictBtn.innerHTML;
+            predictBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 预测中...';
+            predictBtn.disabled = true;
             
-            // 跳转到预测页面并自动填充数据
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/predict';
-            
-            const input = document.createElement('textarea');
-            input.name = 'fasta_text';
-            input.value = fastaText;
-            form.appendChild(input);
-            
-            document.body.appendChild(form);
-            form.submit();
+            try {
+                // 创建FASTA格式数据
+                let fastaText = '';
+                generatedSequences.forEach(seq => {
+                    fastaText += `>${seq.id}\n${seq.sequence}\n`;
+                });
+                
+                // 发送预测请求
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `fasta_text=${encodeURIComponent(fastaText)}`
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showPredictionResults(result);
+                } else {
+                    alert('预测失败: ' + (result.error || '未知错误'));
+                }
+            } catch (error) {
+                alert('预测请求失败: ' + error.message);
+            } finally {
+                // 恢复按钮状态
+                predictBtn.innerHTML = originalText;
+                predictBtn.disabled = false;
+            }
         });
         
         // 导出按钮点击
@@ -381,6 +411,81 @@
             
             document.getElementById('errorMessage').textContent = message;
             document.getElementById('errorSection').style.display = 'block';
+        }
+        
+        function showPredictionResults(result) {
+            const predictionContent = document.getElementById('predictionContent');
+            
+            // 统计信息
+            const stats = result.stats;
+            let statsHtml = `
+                <div class="row text-center mb-3">
+                    <div class="col-md-3">
+                        <h6>总序列数</h6>
+                        <span class="badge bg-primary fs-6">${stats.total}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <h6>阳性预测</h6>
+                        <span class="badge bg-success fs-6">${stats.positive}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <h6>阴性预测</h6>
+                        <span class="badge bg-secondary fs-6">${stats.negative}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <h6>平均概率</h6>
+                        <span class="badge bg-info fs-6">${(stats.avg_probability * 100).toFixed(1)}%</span>
+                    </div>
+                </div>
+            `;
+            
+            // 详细结果表格
+            let tableHtml = `
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>序列ID</th>
+                                <th>序列</th>
+                                <th>预测结果</th>
+                                <th>置信度</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            result.results.forEach(item => {
+                const probability = (item.probability * 100).toFixed(1);
+                const badgeClass = item.prediction === 1 ? 'bg-success' : 'bg-secondary';
+                const statusIcon = item.prediction === 1 ? 'bi-check-circle' : 'bi-x-circle';
+                
+                tableHtml += `
+                    <tr>
+                        <td><code>${item.id}</code></td>
+                        <td><code class="text-break" style="font-size: 0.8em;">${item.sequence}</code></td>
+                        <td><span class="badge ${badgeClass}">${item.label}</span></td>
+                        <td>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar ${item.prediction === 1 ? 'bg-success' : 'bg-secondary'}"
+                                     style="width: ${probability}%">${probability}%</div>
+                            </div>
+                        </td>
+                        <td><i class="bi ${statusIcon} ${item.prediction === 1 ? 'text-success' : 'text-secondary'}"></i></td>
+                    </tr>
+                `;
+            });
+            
+            tableHtml += '</tbody></table></div>';
+            
+            predictionContent.innerHTML = statsHtml + tableHtml;
+            document.getElementById('predictionResults').style.display = 'block';
+            
+            // 滚动到预测结果
+            document.getElementById('predictionResults').scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
         }
     </script>
 </body>
