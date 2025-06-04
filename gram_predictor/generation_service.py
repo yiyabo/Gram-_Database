@@ -21,7 +21,11 @@ logger = logging.getLogger(__name__)
 class SequenceGenerationService:
     """序列生成服务类"""
     
-    def __init__(self, checkpoint_path: str = "models/best.pt", config_name: str = "dual_4090"):
+    def __init__(self, checkpoint_path: str = None, config_name: str = "dual_4090"):
+        if checkpoint_path is None:
+            # 自动检测模型路径
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            checkpoint_path = os.path.join(current_dir, "models", "best.pt")
         """
         初始化生成服务
         
