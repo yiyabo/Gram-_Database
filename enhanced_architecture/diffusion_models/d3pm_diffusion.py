@@ -312,10 +312,11 @@ class D3PMDiffusion:
         # 预测去噪后的logits
         predicted_logits = self.model(x_noisy, t, esm_features)
         
-        # 计算交叉熵损失
+        # 计算交叉熵损失，忽略PAD token (index=0)
         loss = F.cross_entropy(
             predicted_logits.view(-1, self.scheduler.vocab_size),
             x_start.view(-1),
+            ignore_index=0,  # 忽略PAD token，防止模型学习PAD分布
             reduction='mean'
         )
         
