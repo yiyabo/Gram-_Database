@@ -234,7 +234,7 @@ class ESM2AuxiliaryEncoder(nn.Module):
         
         return loss
     
-    def extract_contrastive_features(self, positive_seqs: List[str], negative_seqs: List[str], 
+    def extract_contrastive_features(self, positive_seqs: List[str], negative_seqs: List[str],
                                    batch_size: Optional[int] = None) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         提取对比特征（正负样本）
@@ -250,6 +250,13 @@ class ESM2AuxiliaryEncoder(nn.Module):
         
         # 设置为训练模式以保持梯度信息
         self.train()
+        
+        # 确保序列数量匹配
+        min_len = min(len(positive_seqs), len(negative_seqs))
+        if len(positive_seqs) != len(negative_seqs):
+            logger.warning(f"正负样本数量不匹配，截取到最小长度: {min_len}")
+            positive_seqs = positive_seqs[:min_len]
+            negative_seqs = negative_seqs[:min_len]
         
         # 直接使用encode_sequences获取特征，保持梯度信息
         pos_features = self.encode_sequences(positive_seqs)

@@ -334,7 +334,10 @@ class Dual4090Trainer:
             return {}
         
         try:
-            positive_features, negative_features = self.esm2_encoder.extract_contrastive_features(
+            # 处理DataParallel包装的模型
+            esm2_model = self.esm2_encoder.module if isinstance(self.esm2_encoder, nn.DataParallel) else self.esm2_encoder
+            
+            positive_features, negative_features = esm2_model.extract_contrastive_features(
                 batch['positive_sequences'], batch['negative_sequences']
             )
             
