@@ -3,82 +3,60 @@ document.addEventListener('DOMContentLoaded', () => {
         tsParticles.load("tsparticles-background", {
             fpsLimit: 60,
             background: {
-                color: "transparent" // CSS already sets body background
+                color: "transparent" // Body background is set in CSS
             },
             particles: {
                 number: {
-                    value: 100, // Adjust for density
+                    value: 100, // Restored value
                     density: {
                         enable: true,
-                        area: 800
+                        area: 800 // Restored value
                     }
                 },
                 color: {
-                    value: ["#333333", "#666666", "#999999", "#00bcd4", "#ffffff"] // Greys, cyan, white
+                    value: ["#333333", "#666666", "#999999", "#00E5FF", "#FFFFFF"] // Restored: Greys, accent-cyan, white
                 },
                 shape: {
-                    type: "square", // Small squares
+                    type: "square", // Restored shape
                 },
                 opacity: {
                     value: { min: 0.1, max: 0.6 }, // Random opacity
                     animation: {
                         enable: true,
-                        speed: 0.5,
-                        minimumValue: 0.1,
+                        speed: 0.5, // Restored speed
+                        minimumValue: 0.1, // Restored min value
                         sync: false
                     }
                 },
                 size: {
-                    value: { min: 1, max: 4 }, // Random size
+                    value: { min: 1, max: 4 }, // Restored size
                     animation: {
                         enable: true,
-                        speed: 2,
-                        minimumValue: 0.5,
+                        speed: 2, // Restored speed
+                        minimumValue: 0.5, // Restored min value
                         sync: false
                     }
                 },
                 links: {
                     enable: true,
-                    distance: 120, // Max distance for linking
-                    color: "#444444", // Link color
-                    opacity: 0.3,
-                    width: 1
+                    distance: 120, // Restored distance
+                    color: "#444444", // Restored link color (can be var(--glass-border-color) later)
+                    opacity: 0.3, // Restored opacity
+                    width: 1 // Restored width
                 },
                 move: {
                     enable: true,
-                    speed: 0.8, // Slower movement
-                    direction: "none", // Particles move in random directions
+                    speed: 0.8, // Restored speed
+                    direction: "none",
                     random: true,
                     straight: false,
                     outModes: {
-                        default: "out" // Particles go out of canvas
+                        default: "out"
                     },
-                    attract: { // Subtle attraction to create clusters or central pull
-                        enable: false, // Keep false for now, can enable for different effect
-                        rotateX: 600,
-                        rotateY: 1200
-                    },
-                    // To achieve a more "orbiting" or "galaxy" feel:
-                    // We can try to make particles orbit around the center.
-                    // This is a simplified approach. For true 3D, more complex pathing or orbit config is needed.
-                    // A more direct orbit config might be:
-                    /*
-                    orbit: {
-                        enable: true,
-                        opacity: 0.1,
-                        rotation: {
-                            random: {
-                                enable: true
-                            },
-                            value: 45 // degrees
-                        },
-                        width: 0.5,
-                        radius: undefined // particles will have random radius
+                    attract: {
+                        enable: false // Kept false as per original restored config
                     }
-                    */
-                   // For a start, let's use a general outward/random movement.
-                   // True 3D rotation of the entire canvas/particle system is harder with 2D canvas.
-                   // We can simulate depth with size/speed variations.
+                    // Removed wobble and noise from Nebula Haze
                 }
             },
             interactivity: {
@@ -86,11 +64,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 events: {
                     onHover: {
                         enable: true,
-                        mode: "repulse" // Particles move away from cursor
+                        mode: "repulse" // Restored mode
                     },
                     onClick: {
-                        enable: true,
-                        mode: "push" // Push new particles on click
+                        enable: true, // Restored enable state
+                        mode: "push" // Restored mode
                     },
                     resize: true
                 },

@@ -7,13 +7,13 @@
 
 /* 基础样式 */
 :root {
-    /* Background Gradient - Cool Blues & Purples */
+    /* Background Gradient - Cool Blues & Purples (Restored) */
     --bg-gradient-start: #0f0c29; /* Deep Indigo */
     --bg-gradient-mid: #302b63;   /* Dark Slate Blue */
     --bg-gradient-end: #24243e;   /* Dark Purple-Blue */
     --bg-gradient-angle: 160deg;
 
-    /* Glass Layers */
+    /* Glass Layers (Restored) */
     --glass-bg-primary: rgba(200, 210, 255, 0.1); /* Light blueish, very transparent */
     --glass-bg-secondary: rgba(180, 190, 240, 0.08);
     --glass-border-color: rgba(255, 255, 255, 0.18);
@@ -22,32 +22,37 @@
     --glass-border-radius: 14px;
     --glass-shadow: 0 8px 32px 0 rgba(20, 25, 80, 0.25);
 
-    /* Text Colors on Glass/Gradient */
+    /* Text Colors on Glass/Gradient (Restored) */
     --text-on-glass-primary: #FFFFFF;
     --text-on-glass-secondary: rgba(230, 230, 250, 0.75); /* Lavender white */
     --text-on-glass-muted: rgba(200, 200, 220, 0.6);
 
-    /* Accent Colors */
+    /* Accent Colors (Restored) */
     --accent-cyan: #00E5FF;
     --accent-pink: #FF4081;
     --accent-green: #76FF03;
     --accent-yellow: #FFEA00;
+    /* Removing Nebula Haze specific accents if they were added */
+    /* --accent-lavender: #B2A2D7; */
+    /* --accent-serene-blue: #7AA5E3; */
+    /* --accent-mint-green: #A0D9B1; */
+    /* --accent-soft-pink: #E6A5B7; */
 
-    /* Interactive States */
+
+    /* Interactive States (Restored) */
     --interactive-glow-color: rgba(0, 229, 255, 0.5); /* Cyan glow */
 
-    /* Transitions & Borders */
+    /* Transitions & Borders (Keeping potentially adjusted ones) */
     --main-transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     --border-radius-sm: 8px;
-    --border-radius-md: var(--glass-border-radius);
-    --border-radius-lg: 20px;
+    --border-radius-md: var(--glass-border-radius); /* This was 14px before, then 12px, now back to 14px via var */
+    --border-radius-lg: 18px; /* Keep this or revert to 20px if preferred */
 }
 
 body {
     font-family: 'Inter', sans-serif;
-    /* background: linear-gradient(var(--bg-gradient-angle), var(--bg-gradient-start), var(--bg-gradient-mid), var(--bg-gradient-end)); */
-    /* background-attachment: fixed; */ /* Keep gradient fixed during scroll */
-    background-color: #0a081e; /* Dark base for particles */
+    background: linear-gradient(var(--bg-gradient-angle), var(--bg-gradient-start), var(--bg-gradient-mid), var(--bg-gradient-end));
+    background-attachment: fixed;
     color: var(--text-on-glass-primary);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
@@ -210,6 +215,27 @@ body {
 .card-body {
     padding: 1.75rem; /* Increased padding for more breathing room */
 }
+
+/* Specific text styling for Model Performance cards and Citation block in about.html */
+.card .row.text-center h3 { /* For percentages like 92.8% */
+    color: var(--text-on-glass-primary);
+    font-weight: 600; /* Make percentages bolder */
+}
+
+.card .row.text-center p { /* For labels like "Accuracy", "Precision" */
+    color: var(--text-on-glass-secondary);
+    font-size: 0.9em;
+}
+
+/* For the citation block, assuming it's a div with p inside a card-body */
+.card-body > div.p-3.rounded p { /* Targeting the citation paragraph */
+    color: var(--text-on-glass-secondary);
+}
+.card-body > div.p-3.rounded p em { /* Italicized journal name */
+    color: var(--text-on-glass-secondary);
+    font-style: italic;
+}
+
 
 /* 表单元素 */
 .form-control, .form-select {
@@ -677,98 +703,84 @@ textarea.form-control {
 
 /* 动画效果 */
 .fade-in {
-    animation: fadeIn 0.6s cubic-bezier(0.25, 0.8, 0.25, 1); /* Smoother, slightly longer */
+    animation: fadeIn 0.5s ease-in-out;
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(15px) scale(0.98); } /* Add scale */
-    to { opacity: 1; transform: translateY(0) scale(1); }
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-/* 标签页样式 */
+/* 标签页样式 - Glassmorphism */
 .nav-tabs {
     border-bottom: 1px solid var(--glass-border-color);
-    margin-bottom: -1px; /* To make active tab's bottom border overlap */
 }
 
 .nav-tabs .nav-link {
     color: var(--text-on-glass-secondary);
     border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
     font-weight: 500;
-    padding: 0.9rem 1.4rem;
+    padding: 0.8rem 1.3rem;
     border: 1px solid transparent;
     transition: var(--main-transition);
-    background-color: transparent;
-    margin-right: 2px; /* Small gap between tabs */
+    background-color: transparent; /* Initially transparent */
 }
 
 .nav-tabs .nav-link:hover {
-    border-color: var(--glass-border-color);
     color: var(--accent-cyan);
-    background-color: rgba(var(--accent-cyan), 0.08);
+    background-color: rgba(var(--accent-cyan), 0.1); /* Subtle hover */
+    border-color: var(--glass-border-color) var(--glass-border-color) var(--glass-border-color) var(--glass-border-color);
 }
 
 .nav-tabs .nav-link.active {
     color: var(--accent-cyan);
     font-weight: 600;
     background-color: var(--glass-bg-secondary);
-    border-color: var(--glass-border-color) var(--glass-border-color) transparent;
-    backdrop-filter: blur(5px) saturate(130%);
-    -webkit-backdrop-filter: blur(5px) saturate(130%);
-    position: relative;
-    z-index: 2; /* Ensure active tab is above others */
+    border-color: var(--glass-border-color) var(--glass-border-color) transparent; /* Bottom border merges */
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
 }
 
 .tab-content {
-    padding: 1.75rem; /* Increased padding */
+    padding: 1.5rem;
     border: 1px solid var(--glass-border-color);
-    /* border-top: none; /* This is often desired but depends on exact visual */
-    border-radius: 0 var(--border-radius-md) var(--border-radius-md) var(--border-radius-md); /* Adjust if top-left is covered by active tab */
+    border-top: none;
+    border-radius: 0 0 var(--border-radius-md) var(--border-radius-md);
     background: var(--glass-bg-primary);
     backdrop-filter: blur(var(--glass-blur-amount)) saturate(var(--glass-saturation));
     -webkit-backdrop-filter: blur(var(--glass-blur-amount)) saturate(var(--glass-saturation));
-    position: relative;
-    z-index: 1;
-}
-.nav-tabs .nav-link.active + .nav-link { /* Smooth transition for adjacent tab */
-    border-left-color: transparent;
+    color: var(--text-on-glass-secondary);
 }
 
 
-/* 预格式化文本 */
+/* 预格式化文本 - Already fixed, ensuring it's consistent */
 pre {
-    background: rgba(0,0,0, 0.3); /* Darker background for pre */
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: var(--border-radius-sm);
-    padding: 1.25rem;
-    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; /* Better monospace stack */
-    font-size: 0.875rem; /* Slightly smaller for code */
+    background: rgba(20, 25, 60, 0.35); /* Darker, slightly more opaque semi-transparent blue/purple */
+    backdrop-filter: blur(5px) saturate(140%); /* A bit of blur */
+    -webkit-backdrop-filter: blur(5px) saturate(140%);
+    border: 1px solid var(--glass-border-color);
+    border-radius: var(--border-radius-md); /* Consistent with cards */
+    padding: 1.25rem 1.5rem; /* Consistent padding */
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    font-size: 0.9rem; /* Slightly larger for better readability */
     color: var(--text-on-glass-secondary);
     white-space: pre-wrap;
-    word-break: break-word; /* Changed from break-all for better readability */
-    box-shadow: inset 0 3px 8px rgba(0,0,0,0.25);
-    overflow-x: auto; /* Add horizontal scroll if needed */
+    word-break: break-word;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.25); /* Slightly deeper inset shadow */
+    overflow-x: auto;
 }
 
-/* 手风琴样式 */
+/* 手风琴样式 - Glassmorphism */
 .accordion-item {
-    background-color: transparent;
+    background-color: transparent; /* Item itself is transparent, relies on button/body */
     border: 1px solid var(--glass-border-color);
     border-radius: var(--border-radius-md);
-    margin-bottom: 0.75rem;
-    overflow: hidden; /* Ensure child elements respect border-radius */
+    margin-bottom: 0.5rem;
+    overflow: hidden;
 }
-.accordion-item:first-of-type {
-     border-top-left-radius: var(--border-radius-md);
-     border-top-right-radius: var(--border-radius-md);
-}
-.accordion-item:last-of-type {
-    border-bottom-left-radius: var(--border-radius-md);
-    border-bottom-right-radius: var(--border-radius-md);
-    margin-bottom: 0; /* No margin for the last item */
-}
+/* Remove individual top borders if items are stacked directly */
 .accordion-item + .accordion-item {
-    border-top: 1px solid var(--glass-border-color); /* Ensure separator if margin is 0 */
+     border-top: 1px solid var(--glass-border-color);
 }
 
 
@@ -777,44 +789,49 @@ pre {
 }
 
 .accordion-button {
-    background: var(--glass-bg-primary);
-    backdrop-filter: blur(calc(var(--glass-blur-amount) - 3px)) saturate(var(--glass-saturation));
-    -webkit-backdrop-filter: blur(calc(var(--glass-blur-amount) - 3px)) saturate(var(--glass-saturation));
+    background: var(--glass-bg-secondary); /* Subtle glass for button */
+    backdrop-filter: blur(calc(var(--glass-blur-amount) - 5px)) saturate(var(--glass-saturation));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur-amount) - 5px)) saturate(var(--glass-saturation));
     color: var(--text-on-glass-primary);
     font-weight: 500;
     border-radius: 0;
-    border: none; /* Remove default button border */
-    /* border-bottom: 1px solid var(--glass-border-color); */ /* Separator line handled by item or body */
-    padding: 1.25rem 1.6rem;
+    border: none;
+    padding: 1.1rem 1.5rem;
     transition: var(--main-transition);
     width: 100%;
     text-align: left;
+    box-shadow: none; /* Remove default bootstrap shadow */
+}
+/* Ensure top corners are rounded for the first item's button */
+.accordion-item:first-child > .accordion-header > .accordion-button {
+    border-top-left-radius: var(--border-radius-md);
+    border-top-right-radius: var(--border-radius-md);
+}
+/* Ensure bottom corners are rounded for the last item's collapsed button */
+.accordion-item:last-child > .accordion-header > .accordion-button.collapsed {
+    border-bottom-left-radius: var(--border-radius-md);
+    border-bottom-right-radius: var(--border-radius-md);
+    border-bottom: none; /* No bottom border if collapsed and last */
 }
 
 
 .accordion-button:not(.collapsed) {
-    background: rgba(var(--accent-cyan), 0.2);
+    background: rgba(var(--accent-cyan), 0.15); /* More prominent when open */
     color: var(--accent-cyan);
-    box-shadow: none;
     font-weight: 600;
-    border-bottom: 1px solid rgba(var(--accent-cyan),0.3);
-}
-.accordion-item:last-child .accordion-button.collapsed {
-     border-bottom: none;
+    border-bottom: 1px solid rgba(var(--accent-cyan), 0.25); /* Separator when open */
 }
 
 
 .accordion-button:focus {
     box-shadow: 0 0 0 0.2rem var(--interactive-glow-color);
-    /* border-color: var(--accent-cyan);  Removed as button has no border */
     z-index: 1;
     outline: none;
 }
 
 .accordion-button::after {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23e0e0ff'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e"); /* Lavender white icon */
-    transition: transform 0.3s ease-in-out; /* Smooth rotation */
-    filter: drop-shadow(0 0 2px rgba(0,0,0,0.3));
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23FFFFFF'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e"); /* White icon */
+    transition: transform 0.3s ease-in-out;
 }
 
 .accordion-button:not(.collapsed)::after {
@@ -823,8 +840,8 @@ pre {
 }
 
 .accordion-body {
-    padding: 1.5rem 1.6rem;
+    padding: 1.25rem 1.5rem;
     color: var(--text-on-glass-secondary);
-    background: rgba(255,255,255,0.02); /* Very subtle bg for accordion body */
-    border-top: 1px solid var(--glass-border-color);
+    background: rgba(255,255,255,0.03);
+    /* border-top: 1px solid var(--glass-border-color); Removed, as button border serves this */
 }
