@@ -195,11 +195,10 @@ textarea.form-control {
 /* 序列显示 */
 .sequence-text {
     font-family: 'Courier New', Courier, monospace;
-    word-break: break-all;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    word-break: break-all; /* Allow breaking long words/sequences */
+    white-space: pre-wrap; /* Preserve whitespace and wrap lines */
+    /* max-width is removed to allow using available cell width */
+    /* overflow, text-overflow, nowrap are removed as we want wrapping */
 }
 
 /* 预测标签样式 */
