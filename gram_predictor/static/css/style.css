@@ -7,342 +7,533 @@
 
 /* 基础样式 */
 :root {
-    --primary-color: #2D3748;       /* 深灰蓝 */
-    --secondary-color: #4299E1;     /* 清新蓝 (用于按钮、强调) */
-    --rgb-secondary-color: 66, 153, 225; /* #4299E1 的 RGB 值 */
-    --accent-color: #48BB78;        /* 柔和绿 (用于成功状态) */
-    --light-color: #F7FAFC;         /* 非常浅的灰蓝 (背景) */
-    --dark-color: #1A202C;          /* 深炭色 (文本) */
-    --danger-color: #F56565;        /* 柔和红 */
-    --warning-color: #ECC94B;       /* 柔和黄 */
-    --info-color: #4299E1;          /* 与辅助色一致或稍作调整 */
-    --success-color: var(--accent-color); /* 使用新的 accent color */
-    
-    --text-primary: #1A202C;
-    --text-secondary: #4A5568;      /* 中等灰色文本 */
-    --text-muted: #718096;          /* 浅灰色文本 */
+    /* Background Gradient - Cool Blues & Purples */
+    --bg-gradient-start: #0f0c29; /* Deep Indigo */
+    --bg-gradient-mid: #302b63;   /* Dark Slate Blue */
+    --bg-gradient-end: #24243e;   /* Dark Purple-Blue */
+    --bg-gradient-angle: 160deg;
 
-    --bg-primary: #FFFFFF;          /* 主要内容区域背景 */
-    --bg-secondary: #F7FAFC;        /* 次要背景或卡片背景 */
-    --bg-navbar: var(--primary-color);
+    /* Glass Layers */
+    --glass-bg-primary: rgba(200, 210, 255, 0.1); /* Light blueish, very transparent */
+    --glass-bg-secondary: rgba(180, 190, 240, 0.08);
+    --glass-border-color: rgba(255, 255, 255, 0.18);
+    --glass-blur-amount: 12px;
+    --glass-saturation: 150%;
+    --glass-border-radius: 14px;
+    --glass-shadow: 0 8px 32px 0 rgba(20, 25, 80, 0.25);
 
-    --border-color: #E2E8F0;        /* 浅灰色边框 */
-    --border-radius: 0.375rem;      /* 稍小的圆角 (Bootstrap 5 默认是 0.375rem for .rounded) */
-    --box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* 更柔和的阴影 */
-    --transition: all 0.2s ease-in-out;
+    /* Text Colors on Glass/Gradient */
+    --text-on-glass-primary: #FFFFFF;
+    --text-on-glass-secondary: rgba(230, 230, 250, 0.75); /* Lavender white */
+    --text-on-glass-muted: rgba(200, 200, 220, 0.6);
+
+    /* Accent Colors */
+    --accent-cyan: #00E5FF;
+    --accent-pink: #FF4081;
+    --accent-green: #76FF03;
+    --accent-yellow: #FFEA00;
+
+    /* Interactive States */
+    --interactive-glow-color: rgba(0, 229, 255, 0.5); /* Cyan glow */
+
+    /* Transitions & Borders */
+    --main-transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    --border-radius-sm: 8px;
+    --border-radius-md: var(--glass-border-radius);
+    --border-radius-lg: 20px;
 }
 
 body {
     font-family: 'Inter', sans-serif;
-    background-color: var(--light-color); /* 使用新的浅色背景 */
-    color: var(--text-primary);           /* 使用新的主文本颜色 */
+    /* background: linear-gradient(var(--bg-gradient-angle), var(--bg-gradient-start), var(--bg-gradient-mid), var(--bg-gradient-end)); */
+    /* background-attachment: fixed; */ /* Keep gradient fixed during scroll */
+    background-color: #0a081e; /* Dark base for particles */
+    color: var(--text-on-glass-primary);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#tsparticles-background {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    z-index: -1; /* Ensure it's behind all other content */
 }
 
 /* 导航栏样式 */
 .navbar {
-    background-color: var(--bg-navbar); /* 使用新的导航栏背景色变量 */
-    box-shadow: var(--box-shadow);      /* 使用新的阴影变量 */
-    padding: 0.75rem 0;                 /* 调整内边距 */
+    background: var(--glass-bg-secondary, rgba(30, 40, 80, 0.2)); /* Fallback if --glass-bg-secondary is not defined yet */
+    backdrop-filter: blur(var(--glass-blur-amount, 10px)) saturate(var(--glass-saturation, 120%));
+    -webkit-backdrop-filter: blur(var(--glass-blur-amount, 10px)) saturate(var(--glass-saturation, 120%));
+    border-bottom: 1px solid var(--glass-border-color);
+    box-shadow: none; /* Glassmorphism relies on blur, not heavy shadows for navbar */
+    padding: 0.75rem 0;
+    position: sticky; /* Make navbar sticky */
+    top: 0;
+    z-index: 1030; /* Ensure it's above other content */
+    transition: var(--main-transition);
 }
 
 .navbar-brand {
-    font-weight: 700; /* 加粗品牌文字 */
-    font-size: 1.25rem; /* 调整品牌文字大小 */
-    color: #FFFFFF !important; /* 确保品牌文字为白色 */
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--text-on-glass-primary) !important;
+    transition: var(--main-transition);
+}
+.navbar-brand:hover {
+    color: var(--accent-cyan) !important;
 }
 
 .navbar-brand .bi {
     margin-right: 0.5rem;
-    font-size: 1.5rem; /* 调整品牌图标大小 */
+    font-size: 1.5rem;
+    vertical-align: middle;
 }
 
 .navbar-dark .navbar-nav .nav-link {
-    color: rgba(255, 255, 255, 0.75); /* 调整导航链接默认颜色透明度 */
+    color: var(--text-on-glass-secondary);
     font-weight: 500;
-    transition: var(--transition);
-    padding: 0.6rem 1rem; /* 调整链接内边距 */
-    border-radius: var(--border-radius);
-    margin: 0 0.25rem; /* 调整链接外边距 */
-    font-size: 0.95rem; /* 调整导航链接字体大小 */
+    transition: var(--main-transition);
+    padding: 0.6rem 1rem;
+    border-radius: var(--border-radius-sm);
+    margin: 0 0.25rem;
+    font-size: 0.95rem;
+    position: relative; /* For pseudo-element underline */
 }
 
 .navbar-dark .navbar-nav .nav-link:hover,
 .navbar-dark .navbar-nav .nav-link.active {
-    color: #FFFFFF; /* 激活和悬停时文字全白 */
-    background-color: rgba(255, 255, 255, 0.08); /* 调整激活和悬停背景色 */
+    color: var(--text-on-glass-primary);
+    background-color: rgba(255, 255, 255, 0.05); /* Subtle highlight */
 }
 
+.navbar-dark .navbar-nav .nav-link.active::before {
+    content: '';
+    position: absolute;
+    bottom: -1px; /* Align with border-bottom of navbar if needed, or slightly above */
+    left: 1rem;
+    right: 1rem;
+    height: 2px;
+    background-color: var(--accent-cyan);
+    border-radius: 2px;
+}
+
+
 .navbar-toggler {
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: var(--glass-border-color);
+}
+.navbar-toggler:focus {
+    box-shadow: 0 0 0 0.2rem var(--interactive-glow-color);
 }
 
 .navbar-toggler-icon {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255, 255, 255, 0.75)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(230, 230, 250, 0.75)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
 }
 
 
 /* 卡片样式 */
 .card {
-    border: 1px solid var(--border-color); /* 使用新的边框颜色 */
-    border-radius: var(--border-radius);
-    background-color: var(--bg-primary);   /* 卡片背景色 */
-    box-shadow: var(--box-shadow);         /* 使用新的阴影变量 */
-    transition: var(--transition);
-    margin-bottom: 1.75rem; /* 稍微增加底部外边距 */
-    overflow: hidden; /* 确保子元素圆角 */
+    background: var(--glass-bg-primary);
+    backdrop-filter: blur(var(--glass-blur-amount)) saturate(var(--glass-saturation));
+    -webkit-backdrop-filter: blur(var(--glass-blur-amount)) saturate(var(--glass-saturation));
+    border: 1px solid var(--glass-border-color);
+    border-radius: var(--glass-border-radius);
+    box-shadow: var(--glass-shadow);
+    transition: var(--main-transition);
+    margin-bottom: 2rem;
+    overflow: hidden; /* Important for backdrop-filter to respect border-radius */
+    color: var(--text-on-glass-secondary); /* Default text color for card content */
 }
 
 .card:hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* 悬停时更明显的阴影 */
-    transform: translateY(-2px); /* 轻微上浮效果 */
+    box-shadow: 0 12px 45px 0 rgba(15, 20, 70, 0.35); /* Enhanced shadow on hover */
+    transform: translateY(-5px) scale(1.015); /* More pronounced lift and scale effect */
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 .card-header {
-    font-weight: 600; /* 调整字重 */
-    padding: 1rem 1.25rem; /* 调整内边距 */
-    background-color: var(--bg-secondary); /* 卡片头部使用次要背景色 */
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-primary); /* 卡片头部文字颜色 */
+    font-weight: 600;
+    padding: 1.2rem 1.5rem; /* Slightly increased padding */
+    background-color: rgba(255, 255, 255, 0.03); /* Even more subtle header bg */
+    border-bottom: 1px solid var(--glass-border-color);
+    color: var(--text-on-glass-primary);
 }
 
 .card-header h5, .card-header h4, .card-header h6 {
     margin-bottom: 0;
-    font-weight: 600; /* 确保标题字重 */
+    font-weight: 600;
+    color: var(--text-on-glass-primary);
 }
 
 .card-header .bi {
-    margin-right: 0.5rem;
+    margin-right: 0.7rem; /* Increased icon margin */
+    color: var(--accent-cyan);
+    font-size: 1.1em; /* Slightly larger icon */
 }
 
-/* 特定背景色的卡片头部 */
-.card-header.bg-primary {
-    background-color: var(--primary-color) !important; /* 保持 Bootstrap 的 bg-primary 优先 */
+/* Specific background colors for card headers - adapt to glassmorphism */
+.card-header.bg-primary,
+.card-header.bg-success,
+.card-header.bg-info {
     color: #FFFFFF !important;
-    border-bottom: none; /* 主色调背景时通常不需要底部边框 */
+    border-bottom: 1px solid transparent;
+    /* Apply a colored glass effect instead of solid color */
+}
+
+.card-header.bg-primary {
+    background: linear-gradient(135deg, rgba(0, 100, 220, 0.25), rgba(0, 60, 180, 0.35));
+    backdrop-filter: blur(8px) saturate(180%); /* Slightly different blur/saturation for colored headers */
+    -webkit-backdrop-filter: blur(8px) saturate(180%);
 }
 
 .card-header.bg-success {
-    background-color: var(--success-color) !important;
-    color: #FFFFFF !important;
-    border-bottom: none;
+    background: linear-gradient(135deg, rgba(var(--accent-green), 0.25), rgba(var(--accent-green), 0.35));
+    backdrop-filter: blur(8px) saturate(180%);
+    -webkit-backdrop-filter: blur(8px) saturate(180%);
 }
 
 .card-header.bg-info {
-    background-color: var(--info-color) !important;
-    color: #FFFFFF !important;
-    border-bottom: none;
+    /* Using accent-cyan for info */
+    background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(0, 180, 220, 0.35));
+    backdrop-filter: blur(8px) saturate(180%);
+    -webkit-backdrop-filter: blur(8px) saturate(180%);
 }
 
 .card-body {
-    padding: 1.25rem; /* 调整卡片内容区域内边距 */
+    padding: 1.75rem; /* Increased padding for more breathing room */
 }
 
 /* 表单元素 */
 .form-control, .form-select {
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-    padding: 0.65rem 1rem; /* 调整内边距 */
-    transition: var(--transition);
-    background-color: var(--bg-primary); /* 表单背景色 */
-    color: var(--text-primary);
-    font-size: 0.95rem; /* 调整字体大小 */
+    background: rgba(255, 255, 255, 0.05); /* Very subtle white tint */
+    border: 1px solid var(--glass-border-color);
+    border-radius: var(--border-radius-md);
+    padding: 0.75rem 1.15rem; /* Slightly more padding */
+    transition: var(--main-transition);
+    color: var(--text-on-glass-primary);
+    font-size: 0.95rem;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); /* Subtle inner shadow for depth */
+}
+
+.form-control::placeholder,
+.form-select::placeholder { /* Though select doesn't really have placeholder */
+    color: var(--text-on-glass-muted);
+    opacity: 1; /* Firefox needs this */
 }
 
 .form-control:focus, .form-select:focus {
-    border-color: var(--secondary-color);
-    box-shadow: 0 0 0 0.2rem rgba(var(--rgb-secondary-color), 0.25); /* 使用RGB值以支持透明度 */
-    background-color: var(--bg-primary);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 0 0.2rem var(--interactive-glow-color), inset 0 1px 2px rgba(0,0,0,0.1);
+    outline: none; /* Remove default outline */
+    color: var(--text-on-glass-primary);
 }
+
+/* Style select options for better visibility on dark backgrounds if possible (limited styling capabilities) */
+.form-select option {
+    background-color: var(--bg-gradient-mid, #302b63); /* Match a darker part of the gradient */
+    color: var(--text-on-glass-primary);
+}
+
 
 .form-label {
     font-weight: 500;
-    margin-bottom: 0.5rem;
-    color: var(--text-secondary);
+    margin-bottom: 0.6rem; /* Slightly more margin */
+    color: var(--text-on-glass-secondary);
 }
 
 .form-text {
-    color: var(--text-muted);
-    font-size: 0.875rem;
+    color: var(--text-on-glass-muted);
+    font-size: 0.85rem; /* Slightly smaller */
 }
 
 textarea.form-control {
-    min-height: 150px; /* 调整文本域最小高度 */
-    font-family: 'Courier New', Courier, monospace; /* 保留等宽字体用于序列输入 */
+    min-height: 150px;
+    font-family: 'Courier New', Courier, monospace;
+    line-height: 1.5; /* Improve readability for code/sequence */
+}
+
+.form-range {
+    padding: 0; /* Remove padding for form-range */
+}
+.form-range:focus {
+    box-shadow: none; /* Remove focus shadow for range */
 }
 
 .form-range::-webkit-slider-thumb {
-    background-color: var(--secondary-color);
+    background-color: var(--accent-cyan);
+    border: 2px solid rgba(255,255,255,0.5);
+    transition: var(--main-transition);
 }
+.form-range::-webkit-slider-thumb:hover {
+    box-shadow: 0 0 8px var(--interactive-glow-color);
+}
+
 .form-range::-moz-range-thumb {
-    background-color: var(--secondary-color);
+    background-color: var(--accent-cyan);
+    border: 2px solid rgba(255,255,255,0.5);
+    transition: var(--main-transition);
 }
+.form-range::-moz-range-thumb:hover {
+    box-shadow: 0 0 8px var(--interactive-glow-color);
+}
+
 .form-range::-ms-thumb {
-    background-color: var(--secondary-color);
+    background-color: var(--accent-cyan);
+    border: 2px solid rgba(255,255,255,0.5);
+    transition: var(--main-transition);
+}
+.form-range::-ms-thumb:hover {
+    box-shadow: 0 0 8px var(--interactive-glow-color);
 }
 
 
 /* 按钮样式 */
 .btn {
-    border-radius: var(--border-radius);
-    padding: 0.65rem 1.25rem; /* 调整按钮内边距 */
-    font-weight: 600;       /* 按钮文字加粗 */
-    transition: var(--transition);
-    font-size: 0.95rem;     /* 调整按钮字体大小 */
-    border-width: 1px;      /* 确保边框宽度一致 */
+    border-radius: var(--border-radius-md);
+    padding: 0.8rem 1.6rem; /* Increased padding for a chunkier feel */
+    font-weight: 600;
+    transition: var(--main-transition);
+    font-size: 0.9rem; /* Slightly smaller base font for uppercase */
+    border-width: 1px;
+    border-style: solid;
+    color: var(--text-on-glass-primary);
+    position: relative;
+    overflow: hidden;
+    text-transform: uppercase;
+    letter-spacing: 0.07em; /* More spacing for uppercase */
+    backdrop-filter: blur(4px) saturate(120%); /* Subtle blur on buttons themselves */
+    -webkit-backdrop-filter: blur(4px) saturate(120%);
 }
 
 .btn .bi {
-    margin-right: 0.35rem;
-    vertical-align: text-bottom; /* 图标对齐 */
+    margin-right: 0.6rem;
+    vertical-align: -0.15em; /* Fine-tune icon alignment */
+    font-size: 1.15em;
 }
 
 .btn-lg {
-    padding: 0.75rem 1.5rem;
-    font-size: 1.1rem;
+    padding: 1rem 2rem;
+    font-size: 1.05rem;
+    letter-spacing: 0.08em;
+    border-radius: var(--border-radius-lg);
 }
 
 .btn-sm {
-    padding: 0.25rem 0.75rem;
+    padding: 0.5rem 1.2rem;
     font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    border-radius: var(--border-radius-sm);
 }
 
+/* Primary Button - Cyan Accent */
 .btn-primary {
-    background-color: var(--secondary-color);
-    border-color: var(--secondary-color);
-    color: #FFFFFF;
+    background: linear-gradient(145deg, rgba(var(--accent-cyan),0.55), rgba(var(--accent-cyan),0.35));
+    border-color: rgba(var(--accent-cyan),0.65);
+    box-shadow: 0 5px 18px rgba(var(--accent-cyan),0.25);
 }
 
-.btn-primary:hover {
-    background-color: #2b6cb0; /* 稍暗的蓝色 */
-    border-color: #2c5282;   /* 更暗的蓝色 */
-    color: #FFFFFF;
+.btn-primary:hover, .btn-primary:focus {
+    background: linear-gradient(145deg, rgba(var(--accent-cyan),0.7), rgba(var(--accent-cyan),0.5));
+    border-color: rgba(var(--accent-cyan),0.8);
+    color: var(--text-on-glass-primary);
+    box-shadow: 0 7px 22px rgba(var(--accent-cyan),0.35);
+    transform: translateY(-3px);
 }
 
+/* Success Button - Green Accent */
 .btn-success {
-    background-color: var(--success-color);
-    border-color: var(--success-color);
-    color: #FFFFFF;
+    background: linear-gradient(145deg, rgba(var(--accent-green),0.55), rgba(var(--accent-green),0.35));
+    border-color: rgba(var(--accent-green),0.65);
+    box-shadow: 0 5px 18px rgba(var(--accent-green),0.25);
 }
 
-.btn-success:hover {
-    background-color: #38a169; /* 稍暗的绿色 */
-    border-color: #2f855a;   /* 更暗的绿色 */
-    color: #FFFFFF;
+.btn-success:hover, .btn-success:focus {
+    background: linear-gradient(145deg, rgba(var(--accent-green),0.7), rgba(var(--accent-green),0.5));
+    border-color: rgba(var(--accent-green),0.8);
+    color: var(--text-on-glass-primary);
+    box-shadow: 0 7px 22px rgba(var(--accent-green),0.35);
+    transform: translateY(-3px);
 }
 
-.btn-outline-primary {
-    color: var(--secondary-color);
-    border-color: var(--secondary-color);
+/* Info Button - Pink Accent (as an alternative) */
+.btn-info {
+    background: linear-gradient(145deg, rgba(var(--accent-pink),0.55), rgba(var(--accent-pink),0.35));
+    border-color: rgba(var(--accent-pink),0.65);
+    box-shadow: 0 5px 18px rgba(var(--accent-pink),0.25);
+}
+.btn-info:hover, .btn-info:focus {
+    background: linear-gradient(145deg, rgba(var(--accent-pink),0.7), rgba(var(--accent-pink),0.5));
+    border-color: rgba(var(--accent-pink),0.8);
+    color: var(--text-on-glass-primary);
+    box-shadow: 0 7px 22px rgba(var(--accent-pink),0.35);
+    transform: translateY(-3px);
 }
 
-.btn-outline-primary:hover {
-    background-color: var(--secondary-color);
-    border-color: var(--secondary-color);
-    color: #FFFFFF;
+
+/* Outline Buttons */
+.btn-outline-primary, .btn-outline-info { /* Grouping info with primary for cyan */
+    color: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+    background-color: rgba(var(--accent-cyan),0.05); /* Very subtle initial bg */
+}
+
+.btn-outline-primary:hover, .btn-outline-primary:focus,
+.btn-outline-info:hover, .btn-outline-info:focus {
+    background-color: rgba(var(--accent-cyan),0.2);
+    border-color: var(--accent-cyan);
+    color: #FFFFFF; /* Brighter text on hover */
+    box-shadow: 0 0 18px rgba(var(--accent-cyan),0.3);
 }
 
 .btn-outline-success {
-    color: var(--success-color);
-    border-color: var(--success-color);
+    color: var(--accent-green);
+    border-color: var(--accent-green);
+    background-color: rgba(var(--accent-green),0.05);
 }
 
-.btn-outline-success:hover {
-    background-color: var(--success-color);
-    border-color: var(--success-color);
+.btn-outline-success:hover, .btn-outline-success:focus {
+    background-color: rgba(var(--accent-green),0.2);
+    border-color: var(--accent-green);
     color: #FFFFFF;
+    box-shadow: 0 0 18px rgba(var(--accent-green),0.3);
 }
 
 .btn-outline-secondary {
-    color: var(--text-secondary);
-    border-color: var(--border-color);
+    color: var(--text-on-glass-secondary);
+    border-color: var(--glass-border-color);
+    background-color: rgba(255,255,255,0.02);
 }
 
-.btn-outline-secondary:hover {
-    background-color: var(--bg-secondary);
-    border-color: var(--border-color);
-    color: var(--text-primary);
-}
-
-.btn-outline-info {
-    color: var(--info-color);
-    border-color: var(--info-color);
-}
-.btn-outline-info:hover {
-    background-color: var(--info-color);
-    color: #FFFFFF;
+.btn-outline-secondary:hover, .btn-outline-secondary:focus {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.35);
+    color: var(--text-on-glass-primary);
 }
 
 
 /* 文件上传区域 */
 .file-upload-container {
-    border: 2px dashed var(--border-color); /* 使用新的边框颜色 */
-    border-radius: var(--border-radius);
-    background-color: var(--bg-secondary); /* 使用新的次要背景色 */
-    transition: var(--transition);
+    border: 2px dashed var(--glass-border-color);
+    border-radius: var(--border-radius-lg); /* Larger radius for a softer look */
+    background: var(--glass-bg-secondary);
+    backdrop-filter: blur(calc(var(--glass-blur-amount) - 4px)) saturate(var(--glass-saturation)); /* Slightly less blur */
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur-amount) - 4px)) saturate(var(--glass-saturation));
+    transition: var(--main-transition);
     cursor: pointer;
-    padding: 2rem; /* 增加内边距 */
+    padding: 2.5rem; /* Increased padding */
+    text-align: center; /* Center content */
 }
 
 .file-upload-container:hover,
 .file-upload-container.dragover {
-    border-color: var(--secondary-color);
-    background-color: rgba(var(--rgb-secondary-color), 0.05); /* 使用RGB值以支持透明度 */
+    border-color: var(--accent-cyan);
+    background: rgba(var(--accent-cyan), 0.1);
+    box-shadow: 0 0 20px rgba(var(--accent-cyan),0.2);
 }
 
 .file-upload-content {
-    color: var(--text-muted); /* 使用新的提示文本颜色 */
+    color: var(--text-on-glass-muted);
 }
 
 .file-upload-content .bi {
-    font-size: 3rem; /* 调整图标大小 */
-    color: var(--secondary-color);
-    margin-bottom: 1rem;
+    font-size: 3.5rem;
+    color: var(--accent-cyan);
+    margin-bottom: 1.2rem;
+    display: block; /* Ensure icon is block for centering */
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .selected-file-name {
     font-weight: 500;
-    color: var(--secondary-color);
-    margin-top: 0.5rem;
-    font-size: 0.9rem;
+    color: var(--accent-cyan);
+    margin-top: 0.8rem;
+    font-size: 0.95rem;
+    display: block; /* Ensure it takes full width for centering */
 }
 
 /* 表格样式 */
 .table {
     margin-bottom: 0;
-    border-color: var(--border-color);
-    font-size: 0.9rem; /* 调整表格字体大小 */
+    border-color: var(--glass-border-color);
+    font-size: 0.9rem;
+    color: var(--text-on-glass-secondary); /* Default table text color */
+    /* Remove Bootstrap's default background for direct children of .table if any */
+    background-color: transparent;
 }
 
 .table th {
-    background-color: var(--bg-secondary);
+    background-color: rgba(255, 255, 255, 0.05); /* Subtle background for headers */
     font-weight: 600;
     border-top: none;
-    color: var(--text-secondary);
-    padding: 0.75rem 1rem; /* 调整表头内边距 */
-    border-bottom-width: 2px;
+    color: var(--text-on-glass-primary);
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid var(--glass-border-color); /* Thinner bottom border for th */
+    border-top: 1px solid var(--glass-border-color); /* Add top border for consistency if table-responsive is used */
 }
 
 .table td {
     vertical-align: middle;
-    padding: 0.75rem 1rem; /* 调整单元格内边距 */
-    border-color: var(--border-color);
+    padding: 0.85rem 1.1rem;
+    border-color: var(--glass-border-color);
+    border-top: 1px solid var(--glass-border-color); /* Ensure all cells have a top border */
 }
+
+/* Remove top border for the first row of td to avoid double border with th */
+.table tbody tr:first-child td {
+    border-top: none;
+}
+
 
 .table-striped tbody tr:nth-of-type(odd) {
-    background-color: rgba(var(--rgb-secondary-color), 0.03); /* 非常浅的条纹背景 */
+    background-color: rgba(255, 255, 255, 0.02); /* Very subtle striping */
+}
+.table-striped tbody tr:nth-of-type(even) {
+    background-color: rgba(255, 255, 255, 0.01);
 }
 
+
 .table-hover tbody tr:hover {
-    background-color: rgba(var(--rgb-secondary-color), 0.07); /* 悬停时稍深的背景 */
-    color: var(--text-primary);
+    background-color: rgba(var(--accent-cyan), 0.1);
+    color: var(--text-on-glass-primary);
 }
 
 .table-responsive {
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
+    border: 1px solid var(--glass-border-color);
+    border-radius: var(--border-radius-md); /* Consistent border radius */
+    background: var(--glass-bg-secondary); /* Apply a subtle glass bg to the container */
+    backdrop-filter: blur(calc(var(--glass-blur-amount) - 6px)) saturate(var(--glass-saturation));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur-amount) - 6px)) saturate(var(--glass-saturation));
+    padding: 0.5rem; /* Add some padding inside the responsive container */
+    overflow: auto; /* Ensure scrollbars appear if content overflows */
+}
+
+/* Ensure table inside responsive container doesn't have conflicting background */
+.table-responsive > .table {
+    background-color: transparent;
+    border: none; /* Remove table's own border if inside styled responsive container */
+}
+.table-responsive > .table th,
+.table-responsive > .table td {
+    border-left: none;
+    border-right: none;
+}
+.table-responsive > .table th:first-child,
+.table-responsive > .table td:first-child {
+    border-left: none;
+}
+.table-responsive > .table th:last-child,
+.table-responsive > .table td:last-child {
+    border-right: none;
 }
 
 
@@ -357,163 +548,283 @@ textarea.form-control {
 
 /* 预测标签样式 */
 .prediction-positive {
-    color: var(--success-color);
+    color: var(--accent-green);
     font-weight: 600;
+    text-shadow: 0 0 10px rgba(var(--accent-green), 0.6); /* Enhanced glow */
 }
 
 .prediction-negative {
-    color: var(--danger-color);
+    color: var(--accent-pink); /* Using pink for negative/danger */
     font-weight: 600;
+    text-shadow: 0 0 10px rgba(var(--accent-pink), 0.6); /* Enhanced glow */
 }
 
 /* 页脚样式 */
 .footer {
-    background-color: var(--bg-navbar); /* 与导航栏背景色一致 */
-    color: rgba(255, 255, 255, 0.8); /* 页脚文字颜色 */
-    padding: 2rem 0; /* 调整内边距 */
-    margin-top: 3rem; /* 增加与主内容的间距 */
+    background: rgba(10, 8, 30, 0.3); /* Darker, less prominent glass for footer */
+    backdrop-filter: blur(10px) saturate(160%);
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
+    color: var(--text-on-glass-muted);
+    padding: 2.5rem 1rem; /* Adjusted padding */
+    margin-top: auto; /* Push footer to the bottom if content is short */
+    border-top: 1px solid var(--glass-border-color);
+    text-align: center; /* Center align footer content */
 }
 
 .footer h5 {
-    font-weight: 600;
-    color: #FFFFFF; /* 页脚标题颜色 */
-    margin-bottom: 0.5rem;
+    font-weight: 500; /* Slightly lighter weight for footer heading */
+    color: var(--text-on-glass-secondary);
+    margin-bottom: 0.75rem;
+    font-size: 1.05rem; /* Adjusted size */
 }
 
 .footer p {
-    font-size: 0.9rem;
+    font-size: 0.85rem; /* Slightly smaller paragraph text */
     margin-bottom: 0;
+    color: var(--text-on-glass-muted);
 }
 
-.footer .text-muted { /* 这个类在页脚中可能不再需要，因为我们直接设置了父元素的颜色 */
-    color: rgba(255, 255, 255, 0.65) !important;
+/* Ensure .text-muted in footer still uses the intended muted color if Bootstrap overrides */
+.footer .text-muted {
+    color: var(--text-on-glass-muted) !important;
 }
 
 /* 响应式调整 */
-@media (max-width: 768px) {
+@media (max-width: 992px) {
+    .navbar {
+        padding: 0.6rem 0;
+    }
     .navbar-brand {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
     }
-    
+    .navbar-nav .nav-link {
+        padding: 0.5rem 0.7rem;
+        font-size: 0.85rem;
+    }
+    .card {
+        margin-bottom: 1.5rem;
+        border-radius: var(--border-radius-sm); /* Smaller radius on smaller screens */
+    }
+    .card-header {
+        padding: 1rem 1.2rem;
+        font-size: 0.95rem;
+    }
     .card-body {
-        padding: 1rem;
+        padding: 1.2rem;
     }
-    
+    .btn {
+        padding: 0.7rem 1.3rem;
+        font-size: 0.85rem;
+        letter-spacing: 0.05em;
+    }
+    .btn-lg {
+        padding: 0.8rem 1.6rem;
+        font-size: 1rem;
+    }
+    .form-control, .form-select {
+        padding: 0.7rem 1rem;
+        font-size: 0.9rem;
+    }
+    .container, .container-fluid { /* Ensure containers have some padding */
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        font-size: 15px; /* Slightly smaller base font */
+    }
+    .navbar-brand {
+        font-size: 1rem;
+    }
+    .footer {
+        padding: 2rem 0.5rem;
+    }
+    .footer h5 {
+        font-size: 0.95rem;
+    }
+    .footer p {
+        font-size: 0.8rem;
+    }
     .table th, .table td {
-        padding: 0.5rem;
+        padding: 0.6rem 0.8rem; /* Adjust table padding */
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .card-header .bi {
+        display: none;
+    }
+    .btn:not(.btn-sm) { /* Apply to non-small buttons */
+        width: 100%;
+        margin-bottom: 0.75rem;
+    }
+    .btn + .btn:not(.btn-sm) {
+        margin-left: 0;
+    }
+    .file-upload-container {
+        padding: 1.5rem;
+    }
+    .file-upload-content .bi {
+        font-size: 2.8rem;
+    }
+    .form-label {
+        font-size: 0.9rem;
     }
 }
 
 /* 动画效果 */
 .fade-in {
-    animation: fadeIn 0.5s ease-in;
+    animation: fadeIn 0.6s cubic-bezier(0.25, 0.8, 0.25, 1); /* Smoother, slightly longer */
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from { opacity: 0; transform: translateY(15px) scale(0.98); } /* Add scale */
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* 标签页样式 */
 .nav-tabs {
-    border-bottom-color: var(--border-color);
+    border-bottom: 1px solid var(--glass-border-color);
+    margin-bottom: -1px; /* To make active tab's bottom border overlap */
 }
 
 .nav-tabs .nav-link {
-    color: var(--text-muted);
-    border-radius: var(--border-radius) var(--border-radius) 0 0;
+    color: var(--text-on-glass-secondary);
+    border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
     font-weight: 500;
-    padding: 0.75rem 1.25rem; /* 调整内边距 */
-    border-color: var(--border-color);
-    border-bottom-color: transparent; /* 隐藏非激活标签的底部边框 */
+    padding: 0.9rem 1.4rem;
+    border: 1px solid transparent;
+    transition: var(--main-transition);
+    background-color: transparent;
+    margin-right: 2px; /* Small gap between tabs */
 }
 
 .nav-tabs .nav-link:hover {
-    border-color: var(--border-color); /* 悬停时边框颜色不变或稍变浅 */
-    color: var(--secondary-color);
+    border-color: var(--glass-border-color);
+    color: var(--accent-cyan);
+    background-color: rgba(var(--accent-cyan), 0.08);
 }
 
 .nav-tabs .nav-link.active {
-    color: var(--secondary-color);
+    color: var(--accent-cyan);
     font-weight: 600;
-    background-color: var(--bg-primary); /* 激活标签背景与卡片内容区域一致 */
-    border-color: var(--border-color) var(--border-color) var(--bg-primary); /* 关键：底部边框与背景同色以“融合” */
+    background-color: var(--glass-bg-secondary);
+    border-color: var(--glass-border-color) var(--glass-border-color) transparent;
+    backdrop-filter: blur(5px) saturate(130%);
+    -webkit-backdrop-filter: blur(5px) saturate(130%);
+    position: relative;
+    z-index: 2; /* Ensure active tab is above others */
 }
 
 .tab-content {
-    padding: 1.25rem;
-    border: 1px solid var(--border-color);
-    border-top: none; /* 因为顶部边框由激活的 nav-link 处理 */
-    border-radius: 0 0 var(--border-radius) var(--border-radius);
-    background-color: var(--bg-primary);
+    padding: 1.75rem; /* Increased padding */
+    border: 1px solid var(--glass-border-color);
+    /* border-top: none; /* This is often desired but depends on exact visual */
+    border-radius: 0 var(--border-radius-md) var(--border-radius-md) var(--border-radius-md); /* Adjust if top-left is covered by active tab */
+    background: var(--glass-bg-primary);
+    backdrop-filter: blur(var(--glass-blur-amount)) saturate(var(--glass-saturation));
+    -webkit-backdrop-filter: blur(var(--glass-blur-amount)) saturate(var(--glass-saturation));
+    position: relative;
+    z-index: 1;
+}
+.nav-tabs .nav-link.active + .nav-link { /* Smooth transition for adjacent tab */
+    border-left-color: transparent;
 }
 
 
 /* 预格式化文本 */
 pre {
-    background-color: var(--bg-secondary); /* 使用次要背景色 */
-    border: 1px solid var(--border-color); /* 添加边框 */
-    border-radius: var(--border-radius);
-    padding: 1rem;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 0.9rem;
-    color: var(--text-secondary); /* 调整预格式化文本颜色 */
-    white-space: pre-wrap; /* 确保内容换行 */
-    word-break: break-all;
+    background: rgba(0,0,0, 0.3); /* Darker background for pre */
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: var(--border-radius-sm);
+    padding: 1.25rem;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; /* Better monospace stack */
+    font-size: 0.875rem; /* Slightly smaller for code */
+    color: var(--text-on-glass-secondary);
+    white-space: pre-wrap;
+    word-break: break-word; /* Changed from break-all for better readability */
+    box-shadow: inset 0 3px 8px rgba(0,0,0,0.25);
+    overflow-x: auto; /* Add horizontal scroll if needed */
 }
 
 /* 手风琴样式 */
 .accordion-item {
-    background-color: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius); /* 为整个 item 添加圆角 */
-}
-.accordion-item:not(:first-of-type) {
-    border-top: 1px solid var(--border-color); /* 确保分隔线 */
+    background-color: transparent;
+    border: 1px solid var(--glass-border-color);
+    border-radius: var(--border-radius-md);
+    margin-bottom: 0.75rem;
+    overflow: hidden; /* Ensure child elements respect border-radius */
 }
 .accordion-item:first-of-type {
-    border-top-left-radius: var(--border-radius);
-    border-top-right-radius: var(--border-radius);
+     border-top-left-radius: var(--border-radius-md);
+     border-top-right-radius: var(--border-radius-md);
 }
 .accordion-item:last-of-type {
-    border-bottom-left-radius: var(--border-radius);
-    border-bottom-right-radius: var(--border-radius);
+    border-bottom-left-radius: var(--border-radius-md);
+    border-bottom-right-radius: var(--border-radius-md);
+    margin-bottom: 0; /* No margin for the last item */
+}
+.accordion-item + .accordion-item {
+    border-top: 1px solid var(--glass-border-color); /* Ensure separator if margin is 0 */
 }
 
 
-.accordion-header { /* Bootstrap 5.2+ uses this for the button container */
-   /* No specific style needed here if button is styled directly */
+.accordion-header {
+   /* No specific style needed here */
 }
 
 .accordion-button {
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
+    background: var(--glass-bg-primary);
+    backdrop-filter: blur(calc(var(--glass-blur-amount) - 3px)) saturate(var(--glass-saturation));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur-amount) - 3px)) saturate(var(--glass-saturation));
+    color: var(--text-on-glass-primary);
     font-weight: 500;
-    border-radius: 0; /* 按钮本身不需要圆角，由 accordion-item 控制 */
+    border-radius: 0;
+    border: none; /* Remove default button border */
+    /* border-bottom: 1px solid var(--glass-border-color); */ /* Separator line handled by item or body */
+    padding: 1.25rem 1.6rem;
+    transition: var(--main-transition);
+    width: 100%;
+    text-align: left;
 }
+
 
 .accordion-button:not(.collapsed) {
-    background-color: rgba(var(--rgb-secondary-color), 0.1);
-    color: var(--secondary-color);
-    box-shadow: inset 0 -1px 0 var(--border-color); /* 展开时底部线条 */
+    background: rgba(var(--accent-cyan), 0.2);
+    color: var(--accent-cyan);
+    box-shadow: none;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(var(--accent-cyan),0.3);
 }
+.accordion-item:last-child .accordion-button.collapsed {
+     border-bottom: none;
+}
+
 
 .accordion-button:focus {
-    box-shadow: 0 0 0 0.2rem rgba(var(--rgb-secondary-color), 0.25);
-    border-color: transparent; /* 移除默认的 Bootstrap 焦点边框 */
-    z-index: 1; /* 确保焦点时在最上层 */
+    box-shadow: 0 0 0 0.2rem var(--interactive-glow-color);
+    /* border-color: var(--accent-cyan);  Removed as button has no border */
+    z-index: 1;
+    outline: none;
 }
 
-.accordion-button::after { /* 定制展开/折叠图标颜色 */
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%234A5568'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+.accordion-button::after {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23e0e0ff'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e"); /* Lavender white icon */
+    transition: transform 0.3s ease-in-out; /* Smooth rotation */
+    filter: drop-shadow(0 0 2px rgba(0,0,0,0.3));
 }
 
 .accordion-button:not(.collapsed)::after {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%234299E1'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2300E5FF'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e"); /* Cyan icon when open */
     transform: rotate(-180deg);
 }
 
 .accordion-body {
-    padding: 1.25rem;
-    color: var(--text-secondary);
+    padding: 1.5rem 1.6rem;
+    color: var(--text-on-glass-secondary);
+    background: rgba(255,255,255,0.02); /* Very subtle bg for accordion body */
+    border-top: 1px solid var(--glass-border-color);
 }

@@ -1,444 +1,137 @@
-/**
- * Gram-Negative Bacteria Prediction System - Main JavaScript File
- * Implements user interface interactions and data processing functions
- */
-
-// 在DOM加载完成后执行
-document.addEventListener('DOMContentLoaded', function() {
-    // 获取DOM元素
-    const fileForm = document.getElementById('fileForm');
-    const textForm = document.getElementById('textForm');
-    const fastaFile = document.getElementById('fastaFile');
-    const fastaText = document.getElementById('fastaText');
-    const dropZone = document.getElementById('dropZone');
-    const loadExample = document.getElementById('loadExample');
-    const loadingSection = document.getElementById('loadingSection');
-    const resultsSection = document.getElementById('resultsSection');
-    const errorSection = document.getElementById('errorSection');
-    const errorMessage = document.getElementById('errorMessage');
-    const resetForms = document.getElementById('resetForms');
-    const exportCSV = document.getElementById('exportCSV');
-    const exportFASTA = document.getElementById('exportFASTA');
-    
-    // 存储预测结果
-    let predictionResults = [];
-    
-    // 文件上传处理
-    if (fastaFile) {
-        fastaFile.addEventListener('change', function() {
-            const fileName = this.files[0] ? this.files[0].name : '';
-            const fileNameElement = dropZone.querySelector('.selected-file-name');
-            if (fileNameElement) {
-                fileNameElement.textContent = fileName;
-            }
-        });
-    }
-    
-    // 拖放功能
-    if (dropZone) {
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, preventDefaults, false);
-        });
-        
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, highlight, false);
-        });
-        
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, unhighlight, false);
-        });
-        
-        function highlight() {
-            dropZone.classList.add('dragover');
-        }
-        
-        function unhighlight() {
-            dropZone.classList.remove('dragover');
-        }
-        
-        dropZone.addEventListener('drop', handleDrop, false);
-        
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            
-            if (files.length > 0) {
-                fastaFile.files = files;
-                const fileName = files[0].name;
-                const fileNameElement = dropZone.querySelector('.selected-file-name');
-                if (fileNameElement) {
-                    fileNameElement.textContent = fileName;
-                }
-            }
-        }
-    }
-    
-    // 加载示例数据
-    if (loadExample) {
-        loadExample.addEventListener('click', function() {
-            fetch('/example')
-                .then(response => response.json())
-                .then(data => {
-                    if (fastaText) {
-                        fastaText.value = data.fasta;
-                    }
-                })
-                .catch(error => {
-                    console.error('Failed to load example data:', error);
-                    showError('Failed to load example data, please try again.');
-                });
-        });
-    }
-    
-    // 文件表单提交
-    if (fileForm) {
-        fileForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            if (!fastaFile.files.length) {
-                showError('Please select a FASTA file.');
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('fasta_file', fastaFile.files[0]);
-            
-            submitPrediction(formData);
-        });
-    }
-    
-    // 文本表单提交
-    if (textForm) {
-        textForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            if (!fastaText.value.trim()) {
-                showError('Please input FASTA sequence data.');
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('fasta_text', fastaText.value);
-            
-            submitPrediction(formData);
-        });
-    }
-    
-    // 提交预测请求
-    function submitPrediction(formData) {
-        // 显示加载中
-        showLoading();
-        
-        fetch('/predict', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                showError(data.error);
-                return;
-            }
-            
-            // 存储结果
-            predictionResults = data.results;
-            
-            // 显示结果
-            displayResults(data);
-        })
-        .catch(error => {
-            console.error('Prediction request failed:', error);
-            showError('Prediction request failed, please try again.');
-        });
-    }
-    
-    // 显示预测结果
-    function displayResults(data) {
-        // 隐藏加载中
-        hideLoading();
-        
-        // 显示结果区域
-        resultsSection.classList.remove('d-none');
-        
-        // 更新统计数据
-        document.getElementById('totalSequences').textContent = data.stats.total;
-        document.getElementById('positiveCount').textContent = data.stats.positive;
-        document.getElementById('positivePercentage').textContent = 
-            Math.round((data.stats.positive / data.stats.total) * 100) + '%';
-        
-        // 更新结果表格
-        const tableBody = document.getElementById('resultsTableBody');
-        tableBody.innerHTML = '';
-        
-        data.results.forEach(result => {
-            const row = document.createElement('tr');
-            
-            // 序列ID
-            const idCell = document.createElement('td');
-            idCell.textContent = result.id;
-            row.appendChild(idCell);
-            
-            // 序列
-            const seqCell = document.createElement('td');
-            seqCell.classList.add('sequence-text');
-            seqCell.textContent = result.sequence;
-            seqCell.title = result.sequence; // Show full sequence on hover
-            row.appendChild(seqCell);
-            
-            // 预测概率
-            const probCell = document.createElement('td');
-            probCell.textContent = (result.probability * 100).toFixed(2) + '%';
-            row.appendChild(probCell);
-            
-            // 预测结果
-            const resultCell = document.createElement('td');
-            const resultClass = result.prediction === 1 ? 'prediction-positive' : 'prediction-negative';
-            resultCell.innerHTML = `<span class="${resultClass}">${result.label}</span>`;
-            row.appendChild(resultCell);
-            
-            tableBody.appendChild(row);
-        });
-        
-        // 绘制图表
-        drawResultChart(data);
-    }
-    
-    // 绘制结果图表
-    function drawResultChart(data) {
-        const ctx = document.getElementById('resultChart').getContext('2d');
-        
-        // 计算概率分布
-        const probBins = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
-        const probCounts = Array(probBins.length - 1).fill(0);
-        
-        data.results.forEach(result => {
-            const prob = result.probability;
-            for (let i = 0; i < probBins.length - 1; i++) {
-                if (prob >= probBins[i] && prob < probBins[i + 1]) {
-                    probCounts[i]++;
-                    break;
-                }
-            }
-            // 处理概率为1的情况
-            if (prob === 1) {
-                probCounts[probCounts.length - 1]++;
-            }
-        });
-        
-        // 生成标签
-        const labels = [];
-        for (let i = 0; i < probBins.length - 1; i++) {
-            labels.push(`${(probBins[i] * 100).toFixed(0)}-${(probBins[i+1] * 100).toFixed(0)}%`);
-        }
-        
-        // 销毁旧图表
-        if (window.resultChart instanceof Chart) {
-            window.resultChart.destroy();
-        }
-        
-        // 创建新图表
-        window.resultChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Number of Sequences',
-                    data: probCounts,
-                    backgroundColor: function(context) {
-                        const index = context.dataIndex;
-                        return index < 5 ? 'rgba(231, 76, 60, 0.7)' : 'rgba(46, 204, 113, 0.7)';
-                    },
-                    borderColor: function(context) {
-                        const index = context.dataIndex;
-                        return index < 5 ? 'rgba(192, 57, 43, 1)' : 'rgba(39, 174, 96, 1)';
-                    },
-                    borderWidth: 1
-                }]
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof tsParticles !== 'undefined') {
+        tsParticles.load("tsparticles-background", {
+            fpsLimit: 60,
+            background: {
+                color: "transparent" // CSS already sets body background
             },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        display: false
+            particles: {
+                number: {
+                    value: 100, // Adjust for density
+                    density: {
+                        enable: true,
+                        area: 800
+                    }
+                },
+                color: {
+                    value: ["#333333", "#666666", "#999999", "#00bcd4", "#ffffff"] // Greys, cyan, white
+                },
+                shape: {
+                    type: "square", // Small squares
+                },
+                opacity: {
+                    value: { min: 0.1, max: 0.6 }, // Random opacity
+                    animation: {
+                        enable: true,
+                        speed: 0.5,
+                        minimumValue: 0.1,
+                        sync: false
+                    }
+                },
+                size: {
+                    value: { min: 1, max: 4 }, // Random size
+                    animation: {
+                        enable: true,
+                        speed: 2,
+                        minimumValue: 0.5,
+                        sync: false
+                    }
+                },
+                links: {
+                    enable: true,
+                    distance: 120, // Max distance for linking
+                    color: "#444444", // Link color
+                    opacity: 0.3,
+                    width: 1
+                },
+                move: {
+                    enable: true,
+                    speed: 0.8, // Slower movement
+                    direction: "none", // Particles move in random directions
+                    random: true,
+                    straight: false,
+                    outModes: {
+                        default: "out" // Particles go out of canvas
                     },
-                    tooltip: {
-                        callbacks: {
-                            title: function(tooltipItems) {
-                                return 'Prediction Probability: ' + tooltipItems[0].label;
+                    attract: { // Subtle attraction to create clusters or central pull
+                        enable: false, // Keep false for now, can enable for different effect
+                        rotateX: 600,
+                        rotateY: 1200
+                    },
+                    // To achieve a more "orbiting" or "galaxy" feel:
+                    // We can try to make particles orbit around the center.
+                    // This is a simplified approach. For true 3D, more complex pathing or orbit config is needed.
+                    // A more direct orbit config might be:
+                    /*
+                    orbit: {
+                        enable: true,
+                        opacity: 0.1,
+                        rotation: {
+                            random: {
+                                enable: true
                             },
-                            label: function(context) {
-                                return 'Number of Sequences: ' + context.raw;
-                            }
-                        }
-                    },
-                    title: {
-                        display: true,
-                        text: 'Prediction Probability Distribution',
-                        font: {
-                            size: 16
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Number of Sequences'
+                            value: 45 // degrees
                         },
-                        ticks: {
-                            precision: 0
+                        width: 0.5,
+                        radius: undefined // particles will have random radius
+                    }
+                    */
+                   // For a start, let's use a general outward/random movement.
+                   // True 3D rotation of the entire canvas/particle system is harder with 2D canvas.
+                   // We can simulate depth with size/speed variations.
+                }
+            },
+            interactivity: {
+                detectsOn: "canvas",
+                events: {
+                    onHover: {
+                        enable: true,
+                        mode: "repulse" // Particles move away from cursor
+                    },
+                    onClick: {
+                        enable: true,
+                        mode: "push" // Push new particles on click
+                    },
+                    resize: true
+                },
+                modes: {
+                    grab: {
+                        distance: 150,
+                        links: {
+                            opacity: 0.5
                         }
                     },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Prediction Probability'
-                        }
+                    bubble: {
+                        distance: 200,
+                        size: 10,
+                        duration: 2,
+                        opacity: 0.8
+                    },
+                    repulse: {
+                        distance: 80, // Repulse distance
+                        duration: 0.4
+                    },
+                    push: {
+                        quantity: 3 // Number of particles to push on click
+                    },
+                    remove: {
+                        quantity: 2
                     }
                 }
-            }
+            },
+            detectRetina: true // For high-density displays
+        }).then(container => {
+            console.log("tsParticles loaded successfully");
+            // You can further interact with the container here if needed
+            // For example, to simulate rotation, you might try to slowly update
+            // a global angle and re-calculate particle positions if using custom paths,
+            // or adjust some global movement parameters if the library allows.
+            // tsParticles itself doesn't have a simple "rotate entire scene" for 2D canvas.
+            // The "orbit" feature is per-particle.
+        }).catch(error => {
+            console.error("Error loading tsParticles:", error);
         });
-    }
-    
-    // 导出CSV
-    if (exportCSV) {
-        exportCSV.addEventListener('click', function() {
-            if (!predictionResults.length) {
-                showError('No results to export.');
-                return;
-            }
-            
-            fetch('/export', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    format: 'csv',
-                    results: predictionResults
-                })
-            })
-            .then(response => {
-                if (response.ok) {
-                    return response.blob();
-                }
-                throw new Error('Export failed');
-            })
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = `gram_prediction_${new Date().toISOString().slice(0, 10)}.csv`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-            })
-            .catch(error => {
-                console.error('Failed to export CSV:', error);
-                showError('Failed to export CSV, please try again.');
-            });
-        });
-    }
-    
-    // 导出FASTA
-    if (exportFASTA) {
-        exportFASTA.addEventListener('click', function() {
-            if (!predictionResults.length) {
-                showError('No results to export.');
-                return;
-            }
-            
-            // 检查是否有正例
-            const positiveResults = predictionResults.filter(r => r.prediction === 1);
-            if (!positiveResults.length) {
-                showError('No positive results to export.');
-                return;
-            }
-            
-            fetch('/export', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    format: 'fasta',
-                    results: predictionResults
-                })
-            })
-            .then(response => {
-                if (response.ok) {
-                    return response.blob();
-                }
-                throw new Error('Export failed');
-            })
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = `gram_positive_${new Date().toISOString().slice(0, 10)}.fasta`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-            })
-            .catch(error => {
-                console.error('Failed to export FASTA:', error);
-                showError('Failed to export FASTA, please try again.');
-            });
-        });
-    }
-    
-    // 重置表单
-    if (resetForms) {
-        resetForms.addEventListener('click', function() {
-            resetAll();
-        });
-    }
-    
-    // 显示加载中
-    function showLoading() {
-        loadingSection.classList.remove('d-none');
-        resultsSection.classList.add('d-none');
-        errorSection.classList.add('d-none');
-    }
-    
-    // 隐藏加载中
-    function hideLoading() {
-        loadingSection.classList.add('d-none');
-    }
-    
-    // 显示错误
-    function showError(message) {
-        errorMessage.textContent = message;
-        errorSection.classList.remove('d-none');
-        loadingSection.classList.add('d-none');
-    }
-    
-    // 重置所有
-    function resetAll() {
-        // 重置表单
-        if (fileForm) fileForm.reset();
-        if (textForm) textForm.reset();
-        
-        // 重置文件名显示
-        const fileNameElement = dropZone ? dropZone.querySelector('.selected-file-name') : null;
-        if (fileNameElement) {
-            fileNameElement.textContent = '';
-        }
-        
-        // 隐藏结果和错误
-        resultsSection.classList.add('d-none');
-        errorSection.classList.add('d-none');
-        loadingSection.classList.add('d-none');
-        
-        // 清空结果数据
-        predictionResults = [];
+    } else {
+        console.error("tsParticles library not found.");
     }
 });
