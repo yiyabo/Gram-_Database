@@ -130,6 +130,11 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.12.0/tsparticles.bundle.min.js"></script>
     <!-- This will be replaced by a new generate.js or similar -->
-    <script src="{{ url_for('static', filename='js/generate.js') }}"></script> 
+    <script src="{{ url_for('static', filename='js/generate.js') }}"></script>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+        <!-- Toasts will be appended here by JavaScript -->
+    </div>
 </body>
 </html>

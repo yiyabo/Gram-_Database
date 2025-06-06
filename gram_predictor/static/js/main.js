@@ -1,9 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // tsParticles background initialization (common to all pages)
-    if (typeof tsParticles !== 'undefined') {
+    // tsParticles background initialization
+    if (document.getElementById('tsparticles-background') && typeof tsParticles !== 'undefined') {
         tsParticles.load("tsparticles-background", {
-            fpsLimit: 60,
-            background: { color: "transparent" },
+            fpsLimit: 60, background: { color: "transparent" },
             particles: {
                 number: { value: 100, density: { enable: true, area: 800 } },
                 color: { value: ["#333333", "#666666", "#999999", "#00E5FF", "#FFFFFF"] },
@@ -15,75 +14,137 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             interactivity: {
                 detectsOn: "canvas",
-                events: {
-                    onHover: { enable: true, mode: "repulse" },
-                    onClick: { enable: true, mode: "push" },
-                    resize: true
-                },
-                modes: {
-                    repulse: { distance: 80, duration: 0.4 },
-                    push: { quantity: 3 }
-                }
+                events: { onHover: { enable: true, mode: "repulse" }, onClick: { enable: true, mode: "push" }, resize: true },
+                modes: { repulse: { distance: 80, duration: 0.4 }, push: { quantity: 3 } }
             },
             detectRetina: true
-        }).then(() => console.log("tsParticles loaded successfully"))
-          .catch(error => console.error("Error loading tsParticles:", error));
-    } else {
-        console.error("tsParticles library not found.");
+        }).then(() => console.log("tsParticles loaded successfully for main.js context"))
+          .catch(error => console.error("Error loading tsParticles in main.js:", error));
+    } else if (document.getElementById('tsparticles-background')) {
+        console.error("tsParticles library not found (main.js).");
     }
 
     const PREDICTION_RESULT_STORAGE_KEY = 'gramNegativePredictionResult';
 
-    // Shared DOM elements (might be null depending on the page)
+    // Shared DOM elements
     const loadingSection = document.getElementById('loadingSection');
     const errorSection = document.getElementById('errorSection');
     const errorMessageEl = document.getElementById('errorMessage');
-    
-    let resultChart = null; // For results page chart
+    let resultChart = null;
 
-    // --- SHARED HELPER FUNCTIONS ---
+    // --- GENERAL HELPER: SHOW TOAST NOTIFICATION ---
+    function showToast(message, type = 'info', title = '') {
+        const toastContainer = document.querySelector('.toast-container');
+        if (!toastContainer) {
+            console.warn('Toast container not found on this page. Falling back to alert.');
+            alert((title ? title + ': ' : '') + message);
+            return;
+        }
+
+        const toastId = 'toast-' + Math.random().toString(36).substring(2, 9);
+        let iconHtml = '', headerClass = '', toastClass = ''; // toastClass for potential custom styling
+
+        switch (type.toLowerCase()) {
+            case 'success':
+                iconHtml = '<i class="bi bi-check-circle-fill text-success me-2"></i>';
+                headerClass = 'text-success';
+                toastClass = 'toast-success';
+                if (!title) title = 'Success';
+                break;
+            case 'danger':
+            case 'error':
+                iconHtml = '<i class="bi bi-x-octagon-fill text-danger me-2"></i>';
+                headerClass = 'text-danger';
+                toastClass = 'toast-danger';
+                if (!title) title = 'Error';
+                break;
+            case 'warning':
+                iconHtml = '<i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>';
+                headerClass = 'text-warning';
+                toastClass = 'toast-warning';
+                if (!title) title = 'Warning';
+                break;
+            default: // info
+                iconHtml = '<i class="bi bi-info-circle-fill text-info me-2"></i>';
+                headerClass = 'text-info';
+                toastClass = 'toast-info';
+                if (!title) title = 'Information';
+                break;
+        }
+
+        const toastHtml = `
+            <div class="toast ${toastClass}" role="alert" aria-live="assertive" aria-atomic="true" id="${toastId}" data-bs-delay="4000">
+                <div class="toast-header">
+                    ${iconHtml}
+                    <strong class="me-auto ${headerClass}">${title}</strong>
+                    <small class="text-muted">Just now</small>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>`;
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+        const toastElement = document.getElementById(toastId);
+
+        if (toastElement && typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+            const bsToast = new bootstrap.Toast(toastElement);
+            bsToast.show();
+            toastElement.addEventListener('hidden.bs.toast', () => {
+                bsToast.dispose(); 
+                toastElement.remove();
+            });
+        } else {
+            console.error('Bootstrap Toast API not available or toast element not found.');
+        }
+    }
+
+    // --- SHARED HELPER FUNCTIONS for UI state ---
     function showLoadingState(isLoading, pageType = 'submit') {
         if (loadingSection) loadingSection.classList.toggle('d-none', !isLoading);
-        if (errorSection) errorSection.classList.add('d-none');
+        if (errorSection) errorSection.classList.add('d-none'); // Always hide error when loading changes
 
         if (pageType === 'submit') {
-            const fileForm = document.getElementById('fileForm');
-            const textForm = document.getElementById('textForm');
-            const inputTabs = document.getElementById('inputTabs');
-            const inputTabContent = document.getElementById('inputTabContent');
+            // Select the main card body that contains tabs and tab content for submission
+            const submitCardBody = document.querySelector('.submit-form-container .card-body');
             const submitButtons = document.querySelectorAll('#fileForm button[type="submit"], #textForm button[type="submit"]');
-
-            if (fileForm) fileForm.style.display = isLoading ? 'none' : '';
-            if (textForm) textForm.style.display = isLoading ? 'none' : '';
-            if (inputTabs) inputTabs.style.display = isLoading ? 'none' : '';
-            if (inputTabContent) inputTabContent.style.display = isLoading ? 'none' : '';
+            
+            if (submitCardBody) { // Hide the entire card body content area
+                // Find direct children that are nav-tabs and tab-content to hide them
+                 const navTabs = submitCardBody.querySelector('.nav-tabs');
+                 const tabContent = submitCardBody.querySelector('.tab-content');
+                 if(navTabs) navTabs.style.display = isLoading ? 'none' : '';
+                 if(tabContent) tabContent.style.display = isLoading ? 'none' : '';
+            }
             submitButtons.forEach(btn => btn.disabled = isLoading);
 
         } else if (pageType === 'results') {
-            const resultsSection = document.getElementById('resultsSection');
-            if (resultsSection) resultsSection.classList.toggle('d-none', isLoading);
+            const resultsSectionEl = document.getElementById('resultsSection');
+            if (resultsSectionEl) resultsSectionEl.classList.toggle('d-none', isLoading);
         }
     }
 
     function displayError(message, pageType = 'submit') {
-        showLoadingState(false, pageType); // Hide loading
+        showLoadingState(false, pageType); // Ensure loading is hidden
         if (errorSection) errorSection.classList.remove('d-none');
         if (errorMessageEl) errorMessageEl.textContent = message;
         
         if (pageType === 'submit') { // Show forms again on submit page error
-            const fileForm = document.getElementById('fileForm');
-            const textForm = document.getElementById('textForm');
-            const inputTabs = document.getElementById('inputTabs');
-            const inputTabContent = document.getElementById('inputTabContent');
-            if (fileForm) fileForm.style.display = '';
-            if (textForm) textForm.style.display = '';
-            if (inputTabs) inputTabs.style.display = '';
-            if (inputTabContent) inputTabContent.style.display = '';
+            const submitCardBody = document.querySelector('.submit-form-container .card-body');
+             if (submitCardBody) {
+                 const navTabs = submitCardBody.querySelector('.nav-tabs');
+                 const tabContent = submitCardBody.querySelector('.tab-content');
+                 if(navTabs) navTabs.style.display = '';
+                 if(tabContent) tabContent.style.display = '';
+            }
+            const submitButtons = document.querySelectorAll('#fileForm button[type="submit"], #textForm button[type="submit"]');
+            submitButtons.forEach(btn => btn.disabled = false);
         }
     }
-
-    // --- SUBMIT PAGE SPECIFIC LOGIC ---
-    if (window.location.pathname === '/' || window.location.pathname.endsWith('predict_submit.html') || window.location.pathname.endsWith('/predict')) {
+    
+    // --- SUBMIT PAGE SPECIFIC LOGIC (predict_submit.html) ---
+    if (window.location.pathname === '/' || window.location.pathname.endsWith('predict_submit.html') || window.location.pathname.endsWith('/predict/')) {
         const fileForm = document.getElementById('fileForm');
         const textForm = document.getElementById('textForm');
         const fastaFileEl = document.getElementById('fastaFile');
@@ -94,28 +155,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const resetFormsBtnOnSubmitError = errorSection ? errorSection.querySelector('#resetForms') : null;
 
         function resetSubmitPageForms() {
-            if (loadingSection) loadingSection.classList.add('d-none');
-            if (errorSection) errorSection.classList.add('d-none');
-            
-            const fileFormEl = document.getElementById('fileForm');
-            const textFormEl = document.getElementById('textForm');
-            const inputTabs = document.getElementById('inputTabs');
-            const inputTabContent = document.getElementById('inputTabContent');
-
-            if (fileFormEl) fileFormEl.style.display = '';
-            if (textFormEl) textFormEl.style.display = '';
-            if (inputTabs) inputTabs.style.display = '';
-            if (inputTabContent) inputTabContent.style.display = '';
-            
-            const submitButtons = document.querySelectorAll('#fileForm button[type="submit"], #textForm button[type="submit"]');
-            submitButtons.forEach(btn => btn.disabled = false);
-
+            showLoadingState(false, 'submit'); 
             if (fastaFileEl) fastaFileEl.value = '';
             if (fastaTextEl) fastaTextEl.value = '';
             if (selectedFileNameEl) selectedFileNameEl.textContent = '';
-            if (dropZone) dropZone.classList.remove('file-dropped', 'drag-over');
-            const dropZoneIcon = dropZone ? dropZone.querySelector('.file-upload-content .bi') : null;
-            if (dropZoneIcon) dropZoneIcon.classList.remove('file-upload-icon-pulse');
+            if (dropZone) {
+                dropZone.classList.remove('file-dropped', 'drag-over');
+                const dropZoneIcon = dropZone.querySelector('.file-upload-content .bi');
+                if (dropZoneIcon) dropZoneIcon.classList.remove('file-upload-icon-pulse');
+            }
         }
         
         async function handlePredictionSubmit(formData) {
@@ -135,10 +183,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        if (fileForm) {
+        if (fileForm && fastaFileEl) {
             fileForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                if (!fastaFileEl || fastaFileEl.files.length === 0) {
+                if (fastaFileEl.files.length === 0) {
                     displayError('Please select a FASTA file.', 'submit');
                     return;
                 }
@@ -148,10 +196,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        if (textForm) {
+        if (textForm && fastaTextEl) {
             textForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                const fastaContent = fastaTextEl ? fastaTextEl.value.trim() : '';
+                const fastaContent = fastaTextEl.value.trim();
                 if (!fastaContent) {
                     displayError('Please enter FASTA sequence data.', 'submit');
                     return;
@@ -176,18 +224,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (dropZone) {
             const dropZoneIcon = dropZone.querySelector('.file-upload-content .bi');
-            dropZone.addEventListener('dragenter', (e) => {
-                e.preventDefault();
-                dropZone.classList.add('drag-over');
-                if (dropZoneIcon) dropZoneIcon.classList.add('file-upload-icon-pulse');
-            });
+            dropZone.addEventListener('dragenter', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); if (dropZoneIcon) dropZoneIcon.classList.add('file-upload-icon-pulse'); });
             dropZone.addEventListener('dragover', (e) => e.preventDefault());
-            dropZone.addEventListener('dragleave', (e) => {
-                if (e.target === dropZone || !dropZone.contains(e.relatedTarget)) {
-                    dropZone.classList.remove('drag-over');
-                    if (dropZoneIcon) dropZoneIcon.classList.remove('file-upload-icon-pulse');
-                }
-            });
+            dropZone.addEventListener('dragleave', (e) => { if (e.target === dropZone || !dropZone.contains(e.relatedTarget)) { dropZone.classList.remove('drag-over'); if (dropZoneIcon) dropZoneIcon.classList.remove('file-upload-icon-pulse'); }});
             dropZone.addEventListener('drop', (e) => {
                 e.preventDefault();
                 dropZone.classList.remove('drag-over');
@@ -197,18 +236,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (file.name.endsWith('.fasta') || file.name.endsWith('.fa') || file.name.endsWith('.txt')) {
                         if (fastaFileEl) fastaFileEl.files = e.dataTransfer.files;
                         if (selectedFileNameEl) selectedFileNameEl.textContent = file.name;
-                        dropZone.classList.add('file-dropped');
+                        if (dropZone) dropZone.classList.add('file-dropped');
                     } else {
                         displayError('Invalid file type. Please upload a .fasta, .fa, or .txt file.', 'submit');
                         if (selectedFileNameEl) selectedFileNameEl.textContent = '';
-                        dropZone.classList.remove('file-dropped');
+                        if (dropZone) dropZone.classList.remove('file-dropped');
                     }
                 }
             });
-            dropZone.addEventListener('click', (e) => {
-                if (e.target.closest('button') || e.target.closest('label') || e.target.tagName === 'INPUT') return;
-                if (fastaFileEl) fastaFileEl.click();
-            });
+            dropZone.addEventListener('click', (e) => { if (e.target.closest('button') || e.target.closest('label') || e.target.tagName === 'INPUT') return; if (fastaFileEl) fastaFileEl.click(); });
         }
 
         if (loadExampleBtn && fastaTextEl) {
@@ -219,23 +255,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (data.fasta) {
                         fastaTextEl.value = data.fasta;
                         const textTabButton = document.getElementById('text-tab');
-                        if (textTabButton && typeof bootstrap !== 'undefined') new bootstrap.Tab(textTabButton).show();
+                        if (textTabButton && typeof bootstrap !== 'undefined' && bootstrap.Tab) new bootstrap.Tab(textTabButton).show();
                     }
-                } catch (error) {
-                    console.error('Error loading example:', error);
-                    displayError('Failed to load example data.', 'submit');
-                }
+                } catch (error) { console.error('Error loading example:', error); displayError('Failed to load example data.', 'submit'); }
             });
         }
         
-        if (resetFormsBtnOnSubmitError) {
+        if (resetFormsBtnOnSubmitError) { // This button is inside the errorSection on submit page
             resetFormsBtnOnSubmitError.addEventListener('click', resetSubmitPageForms);
         }
         resetSubmitPageForms(); // Initial UI state for submit page
     }
-    // --- RESULTS PAGE SPECIFIC LOGIC ---
+    // --- RESULTS PAGE SPECIFIC LOGIC (predict_results.html) ---
     else if (window.location.pathname === '/predict/results') {
-        const resultsSection = document.getElementById('resultsSection');
+        const resultsSectionEl = document.getElementById('resultsSection');
         const totalSequencesEl = document.getElementById('totalSequences');
         const positiveCountEl = document.getElementById('positiveCount');
         const negativeCountEl = document.getElementById('negativeCount');
@@ -247,13 +280,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function renderResultsToPage(data) {
             showLoadingState(false, 'results');
-            if (resultsSection) resultsSection.classList.remove('d-none');
+            if (resultsSectionEl) resultsSectionEl.classList.remove('d-none');
             
             currentResultsDataForExport = data.results;
 
             if (totalSequencesEl) totalSequencesEl.textContent = data.stats.total;
             if (positiveCountEl) positiveCountEl.textContent = data.stats.positive;
-            if (negativeCountEl) negativeCountEl.textContent = data.stats.negative;
+            if (negativeCountEl) negativeCountEl.textContent = data.stats.negative; // Make sure this element exists in predict_results.html
             if (positivePercentageEl) positivePercentageEl.textContent = `${data.stats.positive_percentage}%`;
 
             if (resultsTableBodyEl) {
@@ -279,8 +312,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             fullSpan.textContent = fullSequence;
                             sequenceContent.appendChild(fullSpan);
                         } else {
-                            sequenceContent.textContent = fullSequence.length > SEQUENCE_TRUNCATE_LENGTH
-                                                        ? fullSequence.substring(0, SEQUENCE_TRUNCATE_LENGTH) + '...'
+                            sequenceContent.textContent = fullSequence.length > SEQUENCE_TRUNCATE_LENGTH 
+                                                        ? fullSequence.substring(0, SEQUENCE_TRUNCATE_LENGTH) + '...' 
                                                         : fullSequence;
                         }
                     };
@@ -322,11 +355,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     copyBtn.addEventListener('click', async () => {
                         try {
                             await navigator.clipboard.writeText(fullSequence);
-                            copyBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
-                            setTimeout(() => { copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>'; }, 1500);
+                            showToast('Sequence copied to clipboard!', 'success');
+                            copyBtn.innerHTML = '<i class="bi bi-check-lg text-success"></i>';
+                            setTimeout(() => { copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>'; }, 2000);
                         } catch (err) {
-                            copyBtn.innerHTML = '<i class="bi bi-x-lg"></i>';
-                            setTimeout(() => { copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>'; }, 1500);
+                            showToast('Failed to copy sequence.', 'danger');
+                            console.error('Failed to copy sequence: ', err);
+                            copyBtn.innerHTML = '<i class="bi bi-x-lg text-danger"></i>';
+                            setTimeout(() => { copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>'; }, 2000);
                         }
                     });
                     actionsCell.appendChild(copyBtn);
@@ -335,13 +371,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof Chart !== 'undefined' && data.stats) renderResultsChart(data.stats);
         }
         
-        showLoadingState(true, 'results');
+        showLoadingState(true, 'results'); // Show loading initially on results page
         const storedResult = localStorage.getItem(PREDICTION_RESULT_STORAGE_KEY);
         if (storedResult) {
             try {
                 const data = JSON.parse(storedResult);
                 renderResultsToPage(data);
-                // localStorage.removeItem(PREDICTION_RESULT_STORAGE_KEY); // Optional: clear after use
+                // localStorage.removeItem(PREDICTION_RESULT_STORAGE_KEY); // Consider clearing after use
             } catch (e) {
                 console.error("Error parsing stored results:", e);
                 displayError("Could not display stored results. Please try submitting again.", 'results');
@@ -352,9 +388,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         async function exportResultsData(format) {
             if (!currentResultsDataForExport || currentResultsDataForExport.length === 0) {
-                displayError('No results to export.', 'results');
+                showToast('No results to export.', 'warning', 'Export');
                 return;
             }
+            showToast(`Preparing ${format.toUpperCase()} export...`, 'info', 'Export');
             try {
                 const response = await fetch('/export', {
                     method: 'POST',
@@ -374,13 +411,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     a.download = filename; document.body.appendChild(a); a.click();
                     window.URL.revokeObjectURL(url); a.remove();
+                    showToast(`Results exported as ${format.toUpperCase()}.`, 'success', 'Export Successful');
                 } else {
                     const errorData = await response.json();
-                    displayError(errorData.error || `Failed to export ${format.toUpperCase()}.`, 'results');
+                    showToast(errorData.error || `Failed to export ${format.toUpperCase()}.`, 'danger', 'Export Error');
                 }
             } catch (error) {
                 console.error(`Export ${format} error:`, error);
-                displayError(`An error occurred while exporting ${format.toUpperCase()}.`, 'results');
+                showToast(`An error occurred while exporting ${format.toUpperCase()}.`, 'danger', 'Export Error');
             }
         }
 
@@ -390,11 +428,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderResultsChart(stats) {
         const chartEl = document.getElementById('resultChart');
-        if (!chartEl || typeof Chart === 'undefined' || !stats) return;
+        if (!chartEl || typeof Chart === 'undefined' || !stats) {
+            console.warn('Chart element, Chart.js, or stats not available for rendering chart.');
+            return;
+        }
         const ctx = chartEl.getContext('2d');
         if (resultChart) resultChart.destroy();
         
-        const failedCount = stats.failed !== undefined ? stats.failed : (stats.total - stats.positive - stats.negative);
+        const failedCount = stats.failed !== undefined ? stats.failed : (stats.total - stats.positive - (stats.negative !== undefined ? stats.negative : 0));
 
         resultChart = new Chart(ctx, {
             type: 'doughnut',
@@ -402,40 +443,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 labels: ['Predicted Positive', 'Predicted Negative', 'Failed/Other'],
                 datasets: [{
                     label: 'Prediction Distribution',
-                    data: [stats.positive, stats.negative, failedCount < 0 ? 0 : failedCount],
-                    backgroundColor: [
-                        'rgba(40, 167, 69, 0.8)',
-                        'rgba(108, 117, 125, 0.8)',
-                        'rgba(220, 53, 69, 0.7)'
-                    ],
-                    borderColor: [
-                        'rgba(40, 167, 69, 1)',
-                        'rgba(108, 117, 125, 1)',
-                        'rgba(220, 53, 69, 1)'
-                    ],
-                    borderWidth: 1.5,
-                    hoverOffset: 8
+                    data: [stats.positive || 0, stats.negative || 0, failedCount < 0 ? 0 : failedCount],
+                    backgroundColor: ['rgba(40, 167, 69, 0.8)', 'rgba(108, 117, 125, 0.8)', 'rgba(220, 53, 69, 0.7)'],
+                    borderColor: ['rgba(40, 167, 69, 1)', 'rgba(108, 117, 125, 1)', 'rgba(220, 53, 69, 1)'],
+                    borderWidth: 1.5, hoverOffset: 8
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: { animateScale: true, animateRotate: true },
+                responsive: true, maintainAspectRatio: false, animation: { animateScale: true, animateRotate: true },
                 plugins: {
                     legend: { position: 'bottom', labels: { padding: 20, font: { size: 13 } } },
                     title: { display: true, text: 'Prediction Outcome Distribution', font: { size: 16, weight: '600' }, padding: { top:10, bottom:20 } },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.label || '';
-                                if (label) label += ': ';
-                                if (context.parsed !== null) {
-                                    label += context.parsed;
-                                }
-                                return label;
-                            }
-                        }
-                    }
+                    tooltip: { callbacks: { label: (context) => (context.label || '') + (context.parsed !== null ? ': ' + context.parsed : '') } }
                 }
             }
         });
