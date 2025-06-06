@@ -272,8 +272,12 @@ def about_page(): # Renamed for consistency with url_for in new templates
     return render_template('about.html')
 
 @app.route('/generate')
-def generate_page(): # Renamed for consistency with url_for in new templates
-    return render_template('generate.html')
+def generate_params_page(): # Renamed, will serve the new generate parameters page
+    return render_template('generate_params.html')
+
+@app.route('/generate/results')
+def generate_results_page(): # New route for displaying generation results
+    return render_template('generate_results.html')
 
 @app.route('/predict', methods=['POST'])
 def predict_sequence_api(): # Renamed to clarify it's an API endpoint
