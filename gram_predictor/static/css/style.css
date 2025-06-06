@@ -649,6 +649,16 @@ textarea.form-control {
     border-right-color: var(--accent-cyan); /* For effect with box-shadow */
 }
 
+/* Override for DataTable rows to ensure uniform background and text color */
+.table.dataTable tbody tr {
+    background-color: transparent !important;
+    color: var(--text-on-glass-primary) !important;
+}
+
+.table.dataTable tbody td {
+    color: var(--text-on-glass-primary) !important;
+}
+
 
 .table-responsive {
     border: 1px solid var(--glass-border-color);

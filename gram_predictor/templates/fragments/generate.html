@@ -1,0 +1,106 @@
+<!-- Main container for the generate view -->
+<div id="generate-view-container">
+
+    <!-- Parameters Section -->
+    <div id="parameters-section">
+        <div class="params-form-container" style="max-width: 900px; margin-left: auto; margin-right: auto;">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-sliders"></i> Configure Sequence Generation Parameters</h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Set the parameters below to generate novel peptide sequences.</p>
+                    <form id="generateForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="numSequences" class="form-label">Number of Sequences</label>
+                                <input type="number" class="form-control" id="numSequences" min="1" max="50" value="5">
+                                <div class="form-text">Generate 1-50 sequences.</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="seqLength" class="form-label">Sequence Length</label>
+                                <input type="number" class="form-control" id="seqLength" min="10" max="100" value="40">
+                                <div class="form-text">Length: 10-100 amino acids.</div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="samplingMethod" class="form-label">Sampling Method</label>
+                                <select class="form-select" id="samplingMethod">
+                                    <option value="diverse" selected>Diverse Sampling (Recommended)</option>
+                                    <option value="top_k">Top-K Sampling</option>
+                                    <option value="nucleus">Nucleus Sampling</option>
+                                    <option value="basic">Basic Sampling</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="temperature" class="form-label">Temperature: <span id="tempValue" class="fw-bold">1.0</span></label>
+                                <input type="range" class="form-range" id="temperature" min="0.1" max="2.0" step="0.1" value="1.0">
+                                <div class="form-text">Controls randomness (0.1 to 2.0).</div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#advancedParams" aria-expanded="false">
+                                <i class="bi bi-gear"></i> Advanced Parameters
+                            </button>
+                        </div>
+                        <div class="collapse" id="advancedParams">
+                            <div class="card card-body mb-3">
+                                <div class="row">
+                                    <div class="col-md-4"><label for="topK" class="form-label">Top-K</label><input type="number" class="form-control form-control-sm" id="topK" value="10"></div>
+                                    <div class="col-md-4"><label for="nucleusP" class="form-label">Nucleus P</label><input type="number" class="form-control form-control-sm" id="nucleusP" value="0.9" step="0.05"></div>
+                                    <div class="col-md-4"><label for="diversityStrength" class="form-label">Diversity</label><input type="number" class="form-control form-control-sm" id="diversityStrength" value="0.3" step="0.05"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="referenceSeqs" class="form-label">Reference Sequences (Optional)</label>
+                            <textarea class="form-control" id="referenceSeqs" rows="4" placeholder="Enter reference sequences (one per line) to guide generation."></textarea>
+                        </div>
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-lg btn-success" id="generateBtn"><i class="bi bi-magic"></i> Generate Sequences</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading and Error Section -->
+    <div id="loadingSection" class="d-none mt-4">
+        <div class="card shadow-sm"><div class="card-body text-center py-5"><div class="spinner-border text-primary" role="status"></div><h5 class="mt-3">Generating...</h5></div></div>
+    </div>
+    <div id="errorSection" class="d-none mt-4">
+        <div class="card shadow-sm border-danger"><div class="card-body text-center py-4"><i class="bi bi-exclamation-triangle text-danger display-4"></i><h5 class="mt-3 text-danger">Generation Error</h5><p id="errorMessage"></p><button id="resetViewBtn" class="btn btn-outline-primary mt-2">Try Again</button></div></div>
+    </div>
+
+    <!-- Results Section (initially hidden) -->
+    <div id="resultsSection" class="d-none mt-4">
+        <div class="d-flex justify-content-start mb-4">
+             <button id="newGenerationBtn" class="btn btn-outline-secondary"><i class="bi bi-arrow-left-circle"></i> Generate More Sequences</button>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-check-circle"></i> Sequence Generation Results</h5>
+            </div>
+            <div class="card-body">
+                <div id="generationStats" class="mb-4 p-3 rounded" style="background-color: rgba(var(--glass-bg-secondary), 0.5);"></div>
+                <h5>Generated Sequences:</h5>
+                <div class="table-responsive">
+                    <table id="generatedDataTable" class="table table-hover" style="width:100%"></table>
+                </div>
+                <div class="text-center mt-4">
+                    <button type="button" class="btn btn-primary" id="predictGeneratedBtn"><i class="bi bi-search"></i> Predict Activity of These Sequences</button>
+                    <button type="button" class="btn btn-outline-secondary ms-2" id="exportGeneratedBtn"><i class="bi bi-download"></i> Export as CSV</button>
+                    <button type="button" class="btn btn-outline-info ms-2" id="copyGeneratedFastaBtn"><i class="bi bi-clipboard"></i> Copy as FASTA</button>
+                </div>
+                <div id="predictionForGeneratedResults" style="display: none;" class="mt-4">
+                    <div class="card">
+                        <div class="card-header bg-info text-white"><h6 class="mb-0"><i class="bi bi-graph-up"></i> Antimicrobial Activity Prediction</h6></div>
+                        <div class="card-body" id="predictionForGeneratedContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -260,26 +260,33 @@ def before_first_request_func():
         load_app_dependencies()
 
 @app.route('/')
-def predict_submit_page(): # Renamed from index, will serve the new submit page
-    return render_template('predict_submit.html')
-
-@app.route('/predict/results')
-def predict_results_page(): # New route for displaying results
-    return render_template('predict_results.html')
-
-@app.route('/about')
-def about_page(): # Renamed for consistency with url_for in new templates
-    return render_template('about.html')
-
+@app.route('/predict')
 @app.route('/generate')
-def generate_params_page(): # Renamed, will serve the new generate parameters page
-    return render_template('generate_params.html')
+@app.route('/about')
+def index():
+    """Serves the main layout, letting the frontend handle routing."""
+    return render_template('layout.html')
 
-@app.route('/generate/results')
-def generate_results_page(): # New route for displaying generation results
-    return render_template('generate_results.html')
+# --- API Routes for Content Fragments ---
 
-@app.route('/predict', methods=['POST'])
+@app.route('/content/predict')
+def content_predict():
+    """Serves the content for the prediction page."""
+    return render_template('fragments/predict.html')
+
+@app.route('/content/generate')
+def content_generate():
+    """Serves the content for the generation page."""
+    return render_template('fragments/generate.html')
+
+@app.route('/content/about')
+def content_about():
+    """Serves the content for the about page."""
+    return render_template('fragments/about.html')
+
+# --- API Routes for Core Logic ---
+
+@app.route('/api/predict', methods=['POST'])
 def predict_sequence_api(): # Renamed to clarify it's an API endpoint
     global keras_model_global, global_feature_scaler_app 
     try:
@@ -443,7 +450,7 @@ VFIDILDKVENAIHNAAQVGIGFAKPFEKLINPK
 GNNRPVYIPQPRPPHPRI"""
     return jsonify({'fasta': example_fasta})
 
-@app.route('/generate_sequences', methods=['POST'])
+@app.route('/api/generate_sequences', methods=['POST'])
 def generate_sequences_route():
     """API route for generating antimicrobial peptide sequences."""
     try:

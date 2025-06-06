@@ -1,0 +1,70 @@
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-info-circle"></i> About This System</h4>
+            </div>
+            <div class="card-body">
+                <h5 class="border-bottom pb-2">Project Introduction</h5>
+                <p>The Gram-Negative Bacteria Prediction System is an online tool based on advanced machine learning techniques, designed to predict whether peptide sequences exhibit activity against Gram-negative bacteria. This system employs an innovative hybrid model combining deep learning and traditional bioinformatics features to effectively capture the structural and functional properties of peptide sequences.</p>
+                
+                <h5 class="border-bottom pb-2 mt-4">Core Technologies</h5>
+                <ul>
+                    <li><strong>Hybrid Prediction Model</strong>: A Keras-based model that integrates a Long Short-Term Memory (LSTM) network for sequence analysis with a Multi-Layer Perceptron (MLP) for physicochemical feature analysis.</li>
+                    <li><strong>Advanced Sequence Generation</strong>: A D3PM (Discrete Denoising Diffusion Probabilistic Model) powered by ESM-2 embeddings to generate novel, high-potential antimicrobial peptide sequences.</li>
+                    <li><strong>Interactive Web Interface</strong>: A dynamic, single-page application experience built with Flask, Bootstrap, and JavaScript for seamless user interaction.</li>
+                </ul>
+                
+                <h5 class="border-bottom pb-2 mt-4">Usage Instructions</h5>
+                <ol>
+                    <li><strong>Predict</strong>: Navigate to the Predict section. Upload a FASTA file or paste sequences directly. The system will return predictions with probabilities and detailed statistics.</li>
+                    <li><strong>Generate</strong>: Go to the Generate section. Configure parameters like sequence length and sampling method to create novel peptide sequences.</li>
+                    <li><strong>Predict Generated Sequences</strong>: After generating sequences, use the "Predict Activity" button to instantly analyze their potential without leaving the page.</li>
+                </ol>
+                
+                <h5 class="border-bottom pb-2 mt-4">Citation & Acknowledgements</h5>
+                <p>If you use this system in your research, please cite our work. We thank the following open-source projects for their support: TensorFlow/Keras, PyTorch, Transformers, Flask, Peptides, Bootstrap, and DataTables.</p>
+            </div>
+        </div>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0"><i class="bi bi-question-circle"></i> Frequently Asked Questions</h4>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="faqAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">What are anti-Gram-negative peptides?</button>
+                        </h2>
+                        <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                They are peptides that show antimicrobial activity against Gram-negative bacteria (like E. coli). They often have specific properties like positive charge and amphipathic structures that allow them to disrupt bacterial membranes.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">How accurate is the prediction?</button>
+                        </h2>
+                        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                The underlying hybrid model has demonstrated high accuracy on test sets. However, predictions are for research purposes and should be experimentally validated, especially for probabilities near the 0.5 threshold.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">How does the generation work?</button>
+                        </h2>
+                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                The system uses a state-of-the-art diffusion model (D3PM). It learns a distribution of known antimicrobial peptides and then generates new sequences from this learned space, optionally guided by reference sequences you provide.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
