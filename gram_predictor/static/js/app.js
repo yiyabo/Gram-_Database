@@ -211,6 +211,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
+            renderFeatureBarChart(data.results);
+
             // DataTable
             if ($.fn.dataTable.isDataTable('#resultsDataTable')) {
                 resultsTable.destroy();
@@ -272,6 +274,72 @@ document.addEventListener('DOMContentLoaded', () => {
 
         newPredictionBtn?.addEventListener('click', () => switchView('submit'));
         resetViewBtn?.addEventListener('click', () => switchView('submit'));
+
+        const renderFeatureBarChart = (results) => {
+            const canvas = document.getElementById('featureBarChart');
+            if (!canvas) return;
+
+            const positiveData = results.filter(r => r.prediction === 1);
+            const negativeData = results.filter(r => r.prediction === 0);
+            const features = ['Charge', 'Hydrophobicity', 'Hydrophobic_Moment'];
+
+            const calcAverage = (data, key) => {
+                if (data.length === 0) return 0;
+                const sum = data.reduce((acc, curr) => acc + curr.features[key], 0);
+                return sum / data.length;
+            };
+
+            const positiveAvgs = features.map(f => calcAverage(positiveData, f));
+            const negativeAvgs = features.map(f => calcAverage(negativeData, f));
+
+            let existingChart = Chart.getChart(canvas);
+            if (existingChart) {
+                existingChart.destroy();
+            }
+
+            new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: features,
+                    datasets: [
+                        {
+                            label: 'Positive',
+                            data: positiveAvgs,
+                            backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Negative',
+                            data: negativeAvgs,
+                            backgroundColor: 'rgba(108, 117, 125, 0.7)',
+                            borderColor: 'rgba(108, 117, 125, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { color: 'white' }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: { color: 'white' },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        },
+                        x: {
+                            ticks: { color: 'white' },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        }
+                    }
+                }
+            });
+        };
     };
 
     // --- GENERATION PAGE LOGIC ---

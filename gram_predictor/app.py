@@ -360,14 +360,21 @@ def predict_sequence_api(): # Renamed to clarify it's an API endpoint
                 return jsonify({'error': f'{specific_error}, failed to generate valid results.'}), 500
             # If not all failed, proceed to format results
 
+        # Merge prediction results back with the original features
+        results_with_features_df = pd.merge(results_df, all_data_df, on=['ID', 'Sequence'])
+
         results_for_json = []
-        for _, row in results_df.iterrows():
+        for _, row in results_with_features_df.iterrows():
+            # Extract all feature columns dynamically, excluding ID/Sequence which are already there
+            features = {col: row[col] for col in all_data_df.columns if col not in ['ID', 'Sequence']}
+            
             results_for_json.append({
                 'id': row['ID'],
                 'sequence': row['Sequence'],
                 'probability': float(row['Probability']) if pd.notna(row['Probability']) else -1.0,
                 'prediction': int(row['Prediction']) if pd.notna(row['Prediction']) else -1,
-                'label': row['Label']
+                'label': row['Label'],
+                'features': features # Nest all physicochemical features here
             })
         
         valid_results_count = len(results_for_json) - sum(1 for r in results_for_json if r['prediction'] == -1)

@@ -104,11 +104,19 @@
                 <div class="row text-center" id="stats-container">
                     <!-- Stats will be populated here -->
                 </div>
-                <div class="mt-4"><canvas id="resultChart" height="200"></canvas></div>
-                <div class="d-flex justify-content-end mt-3">
-                    <button id="exportCSV" class="btn btn-outline-primary me-2"><i class="bi bi-file-earmark-spreadsheet"></i> Export CSV</button>
-                    <button id="exportFASTA" class="btn btn-outline-success"><i class="bi bi-file-earmark-text"></i> Export Positive FASTA</button>
+                <div class="mt-4 mx-auto" style="position: relative; height:200px; max-width:200px;">
+                    <canvas id="resultChart"></canvas>
                 </div>
+            </div>
+        </div>
+
+        <!-- Feature Average Charts -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-bar-chart-line"></i> Key Feature Averages</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="featureBarChart"></canvas>
             </div>
         </div>
         
@@ -118,6 +126,10 @@
                 <h5 class="mb-0"><i class="bi bi-table"></i> Detailed Prediction Results</h5>
             </div>
             <div class="card-body">
+                <div class="d-flex justify-content-end mb-3">
+                    <button id="exportCSV" class="btn btn-outline-primary me-2"><i class="bi bi-file-earmark-spreadsheet"></i> Export CSV</button>
+                    <button id="exportFASTA" class="btn btn-outline-success"><i class="bi bi-file-earmark-text"></i> Export Positive FASTA</button>
+                </div>
                 <div class="table-responsive">
                     <table id="resultsDataTable" class="table table-hover" style="width:100%">
                         <!-- DataTables will populate the header and body -->
