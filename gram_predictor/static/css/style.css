@@ -536,21 +536,39 @@ textarea.form-control {
 .file-upload-container:hover,
 .file-upload-container.dragover {
     border-color: var(--accent-cyan);
-    background: rgba(var(--accent-cyan), 0.15); /* Slightly more prominent background */
-    box-shadow: 0 0 25px rgba(var(--accent-cyan),0.3), inset 0 0 15px rgba(var(--accent-cyan),0.1); /* Enhanced shadow and inner glow */
-    transform: scale(1.01); /* Slight scale effect */
+    background: rgba(var(--accent-cyan), 0.18); /* Slightly more prominent background */
+    box-shadow: 0 0 30px rgba(var(--accent-cyan),0.35), inset 0 0 20px rgba(var(--accent-cyan),0.15); /* Enhanced shadow and inner glow */
+    transform: scale(1.015); /* Slight scale effect */
 }
+
+/* Animation for icon when dragging over */
+.file-upload-icon-pulse {
+    animation: pulseEffect 1.5s infinite ease-in-out;
+}
+
+@keyframes pulseEffect {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
 .file-upload-container.dragover .file-upload-content .bi {
-    transform: scale(1.15) translateY(-5px); /* Icon animation on dragover */
-    opacity: 0.85;
+    /* We will control this via JS adding a class for pulsing */
 }
 .file-upload-container.dragover .file-upload-content h5 {
     color: var(--accent-cyan); /* Text color change on dragover */
+    font-weight: 600; /* Bolder text */
+}
+.file-upload-container.dragover .file-upload-content p {
+    color: var(--text-on-glass-primary); /* Brighter secondary text */
 }
 
 
 .file-upload-content {
     color: var(--text-on-glass-muted);
+    transition: color 0.3s ease;
+}
+.file-upload-content h5, .file-upload-content p {
     transition: color 0.3s ease;
 }
 
@@ -561,7 +579,7 @@ textarea.form-control {
     display: block; /* Ensure icon is block for centering */
     margin-left: auto;
     margin-right: auto;
-    transition: transform 0.3s ease-out, opacity 0.3s ease-out; /* Smooth transition for icon */
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease-out; /* Smooth elastic transition for icon */
 }
 
 .selected-file-name {
@@ -598,7 +616,7 @@ textarea.form-control {
 
 .table td {
     vertical-align: middle;
-    padding: 0.9rem 1.2rem; /* Consistent padding with th */
+    padding: 1.1rem 1.2rem; /* Increased vertical padding */
     border-color: rgba(var(--glass-border-color), 0.7); /* Slightly softer cell borders */
     border-top: 1px solid rgba(var(--glass-border-color), 0.7);
     transition: background-color 0.25s ease-in-out, color 0.25s ease-in-out; /* Smooth transition for hover */
@@ -983,4 +1001,83 @@ pre {
     color: var(--text-on-glass-secondary);
     background: rgba(255,255,255,0.03);
     /* border-top: 1px solid var(--glass-border-color); Removed, as button border serves this */
+}
+
+/* Styles for sequence toggle and copy button in table (Results Page) */
+.toggle-sequence-view {
+    font-size: 0.8rem;
+    padding: 0.2rem 0.4rem; /* Increased padding for better click area */
+    margin-top: 0.5rem; /* Add margin top to push it below sequence text */
+    margin-left: 0; /* Reset margin-left if it's on its own line */
+    display: inline-block; /* Allow margin-top and padding */
+    vertical-align: middle;
+    color: var(--accent-cyan);
+    text-decoration: none;
+    background: rgba(var(--accent-cyan), 0.1); /* Subtle background */
+    border: 1px solid rgba(var(--accent-cyan), 0.3);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-weight: 500;
+    transition: var(--main-transition);
+}
+.toggle-sequence-view:hover {
+    color: var(--text-on-glass-primary);
+    background: rgba(var(--accent-cyan), 0.2);
+    border-color: var(--accent-cyan);
+    text-decoration: none; /* Remove underline, rely on bg change */
+    box-shadow: 0 0 5px rgba(var(--accent-cyan),0.4);
+}
+
+.sequence-wrapper { /* Wrapper for short/full sequence and toggle */
+    display: flex;
+    flex-direction: column; /* Stack sequence and button vertically */
+    align-items: flex-start; /* Align items to the start */
+}
+.sequence-content { /* Contains the short or full sequence text */
+    word-break: break-all;
+    width: 100%; /* Ensure it takes full width available in cell */
+}
+
+.sequence-full {
+    /* display: none; -- will be controlled by JS */
+    word-break: break-all;
+    white-space: pre-wrap; /* Ensure full sequence wraps */
+    background-color: rgba(var(--accent-cyan), 0.1); /* Slightly more prominent highlight */
+    padding: 0.75rem; /* Increased padding */
+    border-radius: var(--border-radius-md); /* Larger radius */
+    margin-top: 0.6rem;
+    /* display: block; -- will be controlled by JS */
+    font-family: 'Courier New', Courier, monospace; /* Monospace for sequences */
+    font-size: 0.9rem; /* Slightly larger for readability */
+    border: 1px solid rgba(var(--accent-cyan), 0.3); /* More visible border */
+    box-shadow: inset 0 0 8px rgba(var(--accent-cyan), 0.1);
+}
+
+.copy-sequence-btn {
+    padding: 0.3rem 0.6rem; /* Adjusted padding */
+    font-size: 0.85rem; 
+    line-height: 1;
+    color: var(--text-on-glass-secondary);
+    border: 1px solid var(--glass-border-color); /* Use standard glass border */
+    background-color: rgba(var(--glass-bg-secondary), 0.5); /* Subtle bg */
+    transition: var(--main-transition);
+}
+.copy-sequence-btn:hover {
+    color: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+    background-color: rgba(var(--accent-cyan), 0.15);
+    box-shadow: 0 0 8px rgba(var(--accent-cyan), 0.3);
+}
+.copy-sequence-btn .bi-check-lg { /* Style for the success icon */
+    color: var(--accent-green) !important; /* Ensure green color for check */
+}
+.copy-sequence-btn .bi-clipboard,
+.copy-sequence-btn .bi-check-lg {
+    vertical-align: -0.1em; /* Align icon better */
+}
+
+/* Ensure table cells in action column have enough space if buttons are small */
+.table td.actions-cell { /* Assuming you'll add a class to the <td> */
+    text-align: center; /* Or right, depending on preference */
+    min-width: 80px; /* Give some space for buttons */
 }

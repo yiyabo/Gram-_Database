@@ -190,10 +190,28 @@ GLWSKIKEVGKEAAKAAAKAAGKAALGAVSEAV</pre>
                                             <th>Sequence</th>
                                             <th>Prediction Probability</th>
                                             <th>Prediction Result</th>
+                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody id="resultsTableBody">
                                         <!-- Results will be dynamically added via JavaScript -->
+                                        <!-- Example row structure (for JS reference):
+                                        <tr>
+                                            <td>ID_EXAMPLE</td>
+                                            <td>
+                                                <span class="sequence-short">SHORT_SEQ...</span>
+                                                <span class="sequence-full" style="display:none;">FULL_LENGTH_SEQUENCE_HERE</span>
+                                                <button class="btn btn-link btn-sm p-0 toggle-sequence-view" type="button">View More</button>
+                                            </td>
+                                            <td>0.9876</td>
+                                            <td><span class="badge bg-success">Anti-Gram-Negative</span></td>
+                                            <td>
+                                                <button class="btn btn-outline-secondary btn-sm copy-sequence-btn" title="Copy Sequence">
+                                                    <i class="bi bi-clipboard"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        -->
                                     </tbody>
                                 </table>
                             </div>

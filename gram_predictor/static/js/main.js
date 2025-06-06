@@ -156,19 +156,61 @@ document.addEventListener('DOMContentLoaded', () => {
         positivePercentageEl.textContent = `${data.stats.positive_percentage}%`;
 
         resultsTableBodyEl.innerHTML = ''; // Clear previous results
+        const SEQUENCE_TRUNCATE_LENGTH = 30;
+
         data.results.forEach(result => {
             const row = resultsTableBodyEl.insertRow();
+            
+            // Sequence ID
             row.insertCell().textContent = result.id;
             
+            // Sequence (with View More/Less)
             const sequenceCell = row.insertCell();
-            sequenceCell.textContent = result.sequence.length > 30 ? result.sequence.substring(0, 27) + '...' : result.sequence;
-            if (result.sequence.length > 30) {
-                sequenceCell.title = result.sequence; // Show full sequence on hover
-            }
+            const sequenceWrapper = document.createElement('div');
+            sequenceWrapper.classList.add('sequence-wrapper');
+            
+            const sequenceContent = document.createElement('span');
+            sequenceContent.classList.add('sequence-content');
+            
+            const fullSequence = result.sequence;
+            let isExpanded = false;
 
+            const updateSequenceDisplay = () => {
+                if (isExpanded) {
+                    sequenceContent.innerHTML = ''; // Clear previous
+                    const fullSpan = document.createElement('span');
+                    fullSpan.classList.add('sequence-full');
+                    fullSpan.textContent = fullSequence;
+                    sequenceContent.appendChild(fullSpan);
+                } else {
+                    sequenceContent.textContent = fullSequence.length > SEQUENCE_TRUNCATE_LENGTH
+                                                ? fullSequence.substring(0, SEQUENCE_TRUNCATE_LENGTH) + '...'
+                                                : fullSequence;
+                }
+            };
+
+            updateSequenceDisplay(); // Initial display
+            sequenceWrapper.appendChild(sequenceContent);
+
+            if (fullSequence.length > SEQUENCE_TRUNCATE_LENGTH) {
+                const toggleBtn = document.createElement('button');
+                toggleBtn.classList.add('btn', 'btn-link', 'btn-sm', 'p-0', 'toggle-sequence-view');
+                toggleBtn.type = 'button';
+                toggleBtn.textContent = 'View More';
+                toggleBtn.addEventListener('click', () => {
+                    isExpanded = !isExpanded;
+                    updateSequenceDisplay();
+                    toggleBtn.textContent = isExpanded ? 'View Less' : 'View More';
+                });
+                sequenceWrapper.appendChild(toggleBtn);
+            }
+            sequenceCell.appendChild(sequenceWrapper);
+
+            // Probability
             const probabilityCell = row.insertCell();
             probabilityCell.textContent = result.probability !== -1.0 ? result.probability.toFixed(4) : 'N/A';
             
+            // Prediction Label
             const predictionCell = row.insertCell();
             const badge = document.createElement('span');
             badge.classList.add('badge');
@@ -183,6 +225,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 badge.textContent = 'Error';
             }
             predictionCell.appendChild(badge);
+
+            // Actions Cell (for Copy button)
+            const actionsCell = row.insertCell();
+            actionsCell.classList.add('actions-cell'); // For potential specific styling
+            const copyBtn = document.createElement('button');
+            copyBtn.classList.add('btn', 'btn-sm', 'copy-sequence-btn');
+            copyBtn.title = 'Copy Sequence';
+            copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>';
+            copyBtn.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(fullSequence);
+                    copyBtn.innerHTML = '<i class="bi bi-check-lg"></i>'; // Success icon
+                    setTimeout(() => {
+                        copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>'; // Revert icon
+                    }, 1500);
+                } catch (err) {
+                    console.error('Failed to copy sequence: ', err);
+                    // Optionally show an error to the user, e.g., using a toast notification
+                    copyBtn.innerHTML = '<i class="bi bi-x-lg"></i>'; // Error icon
+                     setTimeout(() => {
+                        copyBtn.innerHTML = '<i class="bi bi-clipboard"></i>'; // Revert icon
+                    }, 1500);
+                }
+            });
+            actionsCell.appendChild(copyBtn);
         });
 
         renderChart(data.stats);
@@ -265,34 +332,59 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (dropZone) {
-        dropZone.addEventListener('dragover', (e) => {
+        const dropZoneIcon = dropZone.querySelector('.file-upload-content .bi');
+        const dropZoneH5 = dropZone.querySelector('.file-upload-content h5');
+        const dropZoneP = dropZone.querySelector('.file-upload-content p:not(.selected-file-name)');
+
+
+        dropZone.addEventListener('dragenter', (e) => { // Use dragenter for initial visual cue
             e.preventDefault();
             dropZone.classList.add('drag-over');
+            if (dropZoneIcon) dropZoneIcon.classList.add('file-upload-icon-pulse');
+            if (dropZoneH5) dropZoneH5.style.fontWeight = '700'; // Example direct style change
         });
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('drag-over');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault(); // Necessary to allow drop
+            // drag-over class and icon pulse should already be active from dragenter
         });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            // Only remove if not dragging over a child element (less flicker)
+            if (e.target === dropZone || !dropZone.contains(e.relatedTarget)) {
+                dropZone.classList.remove('drag-over');
+                if (dropZoneIcon) dropZoneIcon.classList.remove('file-upload-icon-pulse');
+                if (dropZoneH5) dropZoneH5.style.fontWeight = ''; // Reset
+            }
+        });
+
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.classList.remove('drag-over');
+            if (dropZoneIcon) dropZoneIcon.classList.remove('file-upload-icon-pulse');
+            if (dropZoneH5) dropZoneH5.style.fontWeight = ''; // Reset
+
             if (e.dataTransfer.files.length > 0) {
                 const file = e.dataTransfer.files[0];
                 if (file.name.endsWith('.fasta') || file.name.endsWith('.fa') || file.name.endsWith('.txt')) {
-                    fastaFileEl.files = e.dataTransfer.files;
-                    selectedFileNameEl.textContent = file.name;
-                    dropZone.classList.add('file-dropped');
+                    fastaFileEl.files = e.dataTransfer.files; // Assign to the hidden file input
+                    if (selectedFileNameEl) selectedFileNameEl.textContent = file.name;
+                    dropZone.classList.add('file-dropped'); // Optional: class to indicate a file is selected
                 } else {
                     showError('Invalid file type. Please upload a .fasta, .fa, or .txt file.');
-                    selectedFileNameEl.textContent = '';
+                    if (selectedFileNameEl) selectedFileNameEl.textContent = '';
                     dropZone.classList.remove('file-dropped');
                 }
             }
         });
+
         // Allow clicking on dropzone to open file dialog
         dropZone.addEventListener('click', (e) => {
-            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'LABEL' && e.target.tagName !== 'BUTTON') {
-                 if (fastaFileEl) fastaFileEl.click();
+            // Prevent opening file dialog if a button or label inside dropzone is clicked
+            if (e.target.closest('button') || e.target.closest('label') || e.target.tagName === 'INPUT') {
+                return;
             }
+            if (fastaFileEl) fastaFileEl.click();
         });
     }
 
