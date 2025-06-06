@@ -92,15 +92,21 @@ body {
     font-size: 1.25rem;
     color: var(--text-on-glass-primary) !important;
     transition: var(--main-transition);
+    text-shadow: 0 0 5px rgba(var(--accent-cyan), 0.3); /* Subtle glow for brand */
 }
 .navbar-brand:hover {
     color: var(--accent-cyan) !important;
+    text-shadow: 0 0 10px rgba(var(--accent-cyan), 0.7);
 }
 
 .navbar-brand .bi {
     margin-right: 0.5rem;
     font-size: 1.5rem;
     vertical-align: middle;
+    transition: var(--main-transition);
+}
+.navbar-brand:hover .bi {
+    transform: rotate(-10deg) scale(1.1); /* Slight icon animation on hover */
 }
 
 .navbar-dark .navbar-nav .nav-link {
@@ -114,21 +120,31 @@ body {
     position: relative; /* For pseudo-element underline */
 }
 
-.navbar-dark .navbar-nav .nav-link:hover,
+.navbar-dark .navbar-nav .nav-link:hover {
+    color: var(--accent-cyan);
+    background-color: rgba(var(--accent-cyan), 0.1);
+}
+
 .navbar-dark .navbar-nav .nav-link.active {
-    color: var(--text-on-glass-primary);
-    background-color: rgba(255, 255, 255, 0.05); /* Subtle highlight */
+    color: var(--accent-cyan);
+    font-weight: 600; /* Bolder for active link */
+    background-color: rgba(var(--accent-cyan), 0.15); /* Slightly more prominent background for active */
+}
+
+.navbar-dark .navbar-nav .nav-link.active .bi { /* Assuming icons might be in nav links */
+    color: var(--accent-cyan);
 }
 
 .navbar-dark .navbar-nav .nav-link.active::before {
     content: '';
     position: absolute;
-    bottom: -1px; /* Align with border-bottom of navbar if needed, or slightly above */
-    left: 1rem;
-    right: 1rem;
-    height: 2px;
+    bottom: 0px; /* Adjusted to be exactly at the bottom */
+    left: 0.5rem; /* Adjusted for better visual balance */
+    right: 0.5rem; /* Adjusted for better visual balance */
+    height: 3px; /* Slightly thicker */
     background-color: var(--accent-cyan);
-    border-radius: 2px;
+    border-radius: 3px 3px 0 0; /* Rounded top corners for the underline */
+    box-shadow: 0 0 8px rgba(var(--accent-cyan), 0.5); /* Glow for the active underline */
 }
 
 
@@ -159,10 +175,14 @@ body {
 }
 
 .card:hover {
-    box-shadow: 0 12px 45px 0 rgba(15, 20, 70, 0.35); /* Enhanced shadow on hover */
-    transform: translateY(-5px) scale(1.015); /* More pronounced lift and scale effect */
-    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 16px 60px 0 rgba(var(--accent-cyan), 0.15), 0 8px 30px rgba(0,0,0,0.2); /* Dual shadow for depth and accent glow */
+    transform: translateY(-6px) scale(1.02); /* Slightly more lift and scale */
+    border-color: rgba(var(--accent-cyan), 0.4); /* Brighter accent border on hover */
 }
+.card:hover .card-header { /* Example of internal element reacting to card hover */
+    border-bottom-color: rgba(var(--accent-cyan), 0.3);
+}
+
 
 .card-header {
     font-weight: 600;
@@ -246,19 +266,23 @@ body {
     transition: var(--main-transition);
     color: var(--text-on-glass-primary);
     font-size: 0.95rem;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); /* Subtle inner shadow for depth */
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.15), 0 0 0 0px rgba(var(--accent-cyan), 0); /* Subtle inner shadow & prep for focus */
+}
+.form-control:hover, .form-select:hover {
+    border-color: rgba(var(--accent-cyan), 0.6); /* Slightly stronger border highlight on hover */
+    background: rgba(var(--accent-cyan), 0.02); /* Very subtle bg tint on hover */
 }
 
 .form-control::placeholder,
 .form-select::placeholder { /* Though select doesn't really have placeholder */
     color: var(--text-on-glass-muted);
-    opacity: 1; /* Firefox needs this */
+    opacity: 0.7; /* Even more subtle placeholder */
 }
 
 .form-control:focus, .form-select:focus {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(var(--accent-cyan), 0.08); /* Slightly more noticeable accent color tint on focus */
     border-color: var(--accent-cyan);
-    box-shadow: 0 0 0 0.2rem var(--interactive-glow-color), inset 0 1px 2px rgba(0,0,0,0.1);
+    box-shadow: 0 0 0 0.25rem rgba(var(--accent-cyan), 0.2), inset 0 1px 3px rgba(0,0,0,0.15); /* Enhanced focus glow, slightly darker inset */
     outline: none; /* Remove default outline */
     color: var(--text-on-glass-primary);
 }
@@ -267,6 +291,21 @@ body {
 .form-select option {
     background-color: var(--bg-gradient-mid, #302b63); /* Match a darker part of the gradient */
     color: var(--text-on-glass-primary);
+    padding: 0.6rem 1.1rem; /* Slightly more padding to options */
+}
+/* Custom select arrow - basic example, might need more work for full cross-browser */
+.form-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='rgba(230, 230, 250, 0.75)'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e"); /* Lavender white arrow */
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center; /* Adjusted position */
+    background-size: 14px 10px; /* Adjusted size */
+    padding-right: 2.5rem; /* Ensure space for custom arrow */
+}
+.form-select:focus {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2300E5FF'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e"); /* Accent color arrow on focus */
 }
 
 
@@ -336,8 +375,13 @@ textarea.form-control {
     overflow: hidden;
     text-transform: uppercase;
     letter-spacing: 0.07em; /* More spacing for uppercase */
-    backdrop-filter: blur(4px) saturate(120%); /* Subtle blur on buttons themselves */
-    -webkit-backdrop-filter: blur(4px) saturate(120%);
+    backdrop-filter: blur(6px) saturate(140%); /* Slightly increased blur/saturation for buttons */
+    -webkit-backdrop-filter: blur(6px) saturate(140%);
+    will-change: transform, box-shadow; /* Hint for smoother animations */
+}
+.btn:active {
+    transform: translateY(2px) scale(0.97); /* More pronounced press effect */
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2), inset 0 1px 3px rgba(0,0,0,0.1); /* Inner shadow for pressed feel */
 }
 
 .btn .bi {
@@ -371,8 +415,12 @@ textarea.form-control {
     background: linear-gradient(145deg, rgba(var(--accent-cyan),0.7), rgba(var(--accent-cyan),0.5));
     border-color: rgba(var(--accent-cyan),0.8);
     color: var(--text-on-glass-primary);
-    box-shadow: 0 7px 22px rgba(var(--accent-cyan),0.35);
-    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(var(--accent-cyan),0.4); /* Enhanced shadow */
+    transform: translateY(-4px) scale(1.03); /* Slightly more hover effect */
+}
+.btn-primary:active {
+    background: linear-gradient(145deg, rgba(var(--accent-cyan),0.4), rgba(var(--accent-cyan),0.2));
+    box-shadow: 0 2px 10px rgba(var(--accent-cyan),0.25), inset 0 1px 3px rgba(0,0,0,0.1);
 }
 
 /* Success Button - Green Accent */
@@ -386,8 +434,12 @@ textarea.form-control {
     background: linear-gradient(145deg, rgba(var(--accent-green),0.7), rgba(var(--accent-green),0.5));
     border-color: rgba(var(--accent-green),0.8);
     color: var(--text-on-glass-primary);
-    box-shadow: 0 7px 22px rgba(var(--accent-green),0.35);
-    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(var(--accent-green),0.4); /* Enhanced shadow */
+    transform: translateY(-4px) scale(1.03); /* Slightly more hover effect */
+}
+.btn-success:active {
+    background: linear-gradient(145deg, rgba(var(--accent-green),0.4), rgba(var(--accent-green),0.2));
+    box-shadow: 0 2px 10px rgba(var(--accent-green),0.25), inset 0 1px 3px rgba(0,0,0,0.1);
 }
 
 /* Info Button - Pink Accent (as an alternative) */
@@ -400,10 +452,13 @@ textarea.form-control {
     background: linear-gradient(145deg, rgba(var(--accent-pink),0.7), rgba(var(--accent-pink),0.5));
     border-color: rgba(var(--accent-pink),0.8);
     color: var(--text-on-glass-primary);
-    box-shadow: 0 7px 22px rgba(var(--accent-pink),0.35);
-    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(var(--accent-pink),0.4); /* Enhanced shadow */
+    transform: translateY(-4px) scale(1.03); /* Slightly more hover effect */
 }
-
+.btn-info:active {
+    background: linear-gradient(145deg, rgba(var(--accent-pink),0.4), rgba(var(--accent-pink),0.2));
+    box-shadow: 0 2px 10px rgba(var(--accent-pink),0.25), inset 0 1px 3px rgba(0,0,0,0.1);
+}
 
 /* Outline Buttons */
 .btn-outline-primary, .btn-outline-info { /* Grouping info with primary for cyan */
@@ -414,10 +469,16 @@ textarea.form-control {
 
 .btn-outline-primary:hover, .btn-outline-primary:focus,
 .btn-outline-info:hover, .btn-outline-info:focus {
-    background-color: rgba(var(--accent-cyan),0.2);
+    background-color: rgba(var(--accent-cyan),0.25); /* Slightly more opaque fill */
     border-color: var(--accent-cyan);
     color: #FFFFFF; /* Brighter text on hover */
-    box-shadow: 0 0 18px rgba(var(--accent-cyan),0.3);
+    box-shadow: 0 0 20px rgba(var(--accent-cyan),0.35), 0 0 10px rgba(var(--accent-cyan),0.2) inset; /* Outer and inner glow */
+    transform: translateY(-2px);
+}
+.btn-outline-primary:active, .btn-outline-info:active {
+    background-color: rgba(var(--accent-cyan),0.15);
+    transform: translateY(0px);
+    box-shadow: 0 0 10px rgba(var(--accent-cyan),0.25), 0 0 5px rgba(var(--accent-cyan),0.15) inset;
 }
 
 .btn-outline-success {
@@ -427,10 +488,16 @@ textarea.form-control {
 }
 
 .btn-outline-success:hover, .btn-outline-success:focus {
-    background-color: rgba(var(--accent-green),0.2);
+    background-color: rgba(var(--accent-green),0.25); /* Slightly more opaque fill */
     border-color: var(--accent-green);
     color: #FFFFFF;
-    box-shadow: 0 0 18px rgba(var(--accent-green),0.3);
+    box-shadow: 0 0 20px rgba(var(--accent-green),0.35), 0 0 10px rgba(var(--accent-green),0.2) inset; /* Outer and inner glow */
+    transform: translateY(-2px);
+}
+.btn-outline-success:active {
+    background-color: rgba(var(--accent-green),0.15);
+    transform: translateY(0px);
+    box-shadow: 0 0 10px rgba(var(--accent-green),0.25), 0 0 5px rgba(var(--accent-green),0.15) inset;
 }
 
 .btn-outline-secondary {
@@ -440,9 +507,16 @@ textarea.form-control {
 }
 
 .btn-outline-secondary:hover, .btn-outline-secondary:focus {
-    background-color: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.35);
+    background-color: rgba(255, 255, 255, 0.1); /* Slightly more opaque */
+    border-color: rgba(255, 255, 255, 0.4);
     color: var(--text-on-glass-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px rgba(255,255,255,0.1);
+}
+.btn-outline-secondary:active {
+    background-color: rgba(255, 255, 255, 0.05);
+    transform: translateY(0px);
+    box-shadow: 0 0 8px rgba(255,255,255,0.05);
 }
 
 
@@ -462,12 +536,22 @@ textarea.form-control {
 .file-upload-container:hover,
 .file-upload-container.dragover {
     border-color: var(--accent-cyan);
-    background: rgba(var(--accent-cyan), 0.1);
-    box-shadow: 0 0 20px rgba(var(--accent-cyan),0.2);
+    background: rgba(var(--accent-cyan), 0.15); /* Slightly more prominent background */
+    box-shadow: 0 0 25px rgba(var(--accent-cyan),0.3), inset 0 0 15px rgba(var(--accent-cyan),0.1); /* Enhanced shadow and inner glow */
+    transform: scale(1.01); /* Slight scale effect */
 }
+.file-upload-container.dragover .file-upload-content .bi {
+    transform: scale(1.15) translateY(-5px); /* Icon animation on dragover */
+    opacity: 0.85;
+}
+.file-upload-container.dragover .file-upload-content h5 {
+    color: var(--accent-cyan); /* Text color change on dragover */
+}
+
 
 .file-upload-content {
     color: var(--text-on-glass-muted);
+    transition: color 0.3s ease;
 }
 
 .file-upload-content .bi {
@@ -477,6 +561,7 @@ textarea.form-control {
     display: block; /* Ensure icon is block for centering */
     margin-left: auto;
     margin-right: auto;
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out; /* Smooth transition for icon */
 }
 
 .selected-file-name {
@@ -498,20 +583,25 @@ textarea.form-control {
 }
 
 .table th {
-    background-color: rgba(255, 255, 255, 0.05); /* Subtle background for headers */
-    font-weight: 600;
+    background-color: rgba(var(--accent-cyan), 0.08); /* Header bg with accent tint */
+    font-weight: 700; /* Bolder header text */
     border-top: none;
-    color: var(--text-on-glass-primary);
-    padding: 0.85rem 1.1rem;
-    border-bottom: 1px solid var(--glass-border-color); /* Thinner bottom border for th */
-    border-top: 1px solid var(--glass-border-color); /* Add top border for consistency if table-responsive is used */
+    color: var(--accent-cyan); /* Header text in accent color */
+    padding: 1rem 1.2rem; /* Slightly more padding */
+    border-bottom: 2px solid rgba(var(--accent-cyan), 0.3); /* Stronger accent bottom border for th */
+    border-top: 1px solid var(--glass-border-color);
+    text-transform: uppercase; /* Uppercase headers */
+    letter-spacing: 0.06em; /* Adjusted letter spacing */
+    font-size: 0.88rem; /* Adjusted font size */
+    text-align: left; /* Ensure text alignment */
 }
 
 .table td {
     vertical-align: middle;
-    padding: 0.85rem 1.1rem;
-    border-color: var(--glass-border-color);
-    border-top: 1px solid var(--glass-border-color); /* Ensure all cells have a top border */
+    padding: 0.9rem 1.2rem; /* Consistent padding with th */
+    border-color: rgba(var(--glass-border-color), 0.7); /* Slightly softer cell borders */
+    border-top: 1px solid rgba(var(--glass-border-color), 0.7);
+    transition: background-color 0.25s ease-in-out, color 0.25s ease-in-out; /* Smooth transition for hover */
 }
 
 /* Remove top border for the first row of td to avoid double border with th */
@@ -519,19 +609,28 @@ textarea.form-control {
     border-top: none;
 }
 
-
 .table-striped tbody tr:nth-of-type(odd) {
-    background-color: rgba(255, 255, 255, 0.02); /* Very subtle striping */
+    background-color: rgba(var(--glass-bg-secondary), 0.5); /* Use a variant of glass bg for striping */
 }
 .table-striped tbody tr:nth-of-type(even) {
-    background-color: rgba(255, 255, 255, 0.01);
+    background-color: transparent; /* Keep even rows more transparent */
 }
-
 
 .table-hover tbody tr:hover {
-    background-color: rgba(var(--accent-cyan), 0.1);
-    color: var(--text-on-glass-primary);
+    background-color: rgba(var(--accent-cyan), 0.2); /* More prominent hover */
+    color: var(--text-on-glass-primary); /* Ensure text is bright on hover */
+    box-shadow: inset 3px 0 0 var(--accent-cyan), inset -3px 0 0 var(--accent-cyan); /* Accent side borders on hover */
 }
+.table-hover tbody tr:hover td {
+    color: var(--text-on-glass-primary); /* Ensure text color changes on hover */
+}
+.table-hover tbody tr:hover td:first-child {
+    border-left-color: var(--accent-cyan); /* For effect with box-shadow */
+}
+.table-hover tbody tr:hover td:last-child {
+    border-right-color: var(--accent-cyan); /* For effect with box-shadow */
+}
+
 
 .table-responsive {
     border: 1px solid var(--glass-border-color);
@@ -722,24 +821,46 @@ textarea.form-control {
     font-weight: 500;
     padding: 0.8rem 1.3rem;
     border: 1px solid transparent;
-    transition: var(--main-transition);
+    transition: var(--main-transition), border-color 0.2s ease-in-out, background-color 0.2s ease-in-out; /* Refined transition */
     background-color: transparent; /* Initially transparent */
+    position: relative;
 }
+.nav-tabs .nav-link::after { /* Underline effect for hover/active */
+    content: '';
+    position: absolute;
+    bottom: -1px; /* Align with the tab's bottom border */
+    left: 0;
+    right: 0;
+    height: 3px;
+    background-color: var(--accent-cyan);
+    transform: scaleX(0);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Smooth elastic transition */
+    border-radius: 2px 2px 0 0;
+}
+
 
 .nav-tabs .nav-link:hover {
     color: var(--accent-cyan);
-    background-color: rgba(var(--accent-cyan), 0.1); /* Subtle hover */
-    border-color: var(--glass-border-color) var(--glass-border-color) var(--glass-border-color) var(--glass-border-color);
+    background-color: rgba(var(--accent-cyan), 0.08); /* Slightly adjusted hover */
+    border-color: transparent; /* Keep border transparent on hover, rely on underline */
+}
+.nav-tabs .nav-link:hover::after {
+    transform: scaleX(0.7); /* Partial underline on hover */
 }
 
 .nav-tabs .nav-link.active {
     color: var(--accent-cyan);
-    font-weight: 600;
-    background-color: var(--glass-bg-secondary);
+    font-weight: 700; /* Bolder active tab */
+    background-color: var(--glass-bg-secondary); /* Keep this for active tab body connection */
     border-color: var(--glass-border-color) var(--glass-border-color) transparent; /* Bottom border merges */
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(8px) saturate(160%); /* Enhanced blur for active tab */
+    -webkit-backdrop-filter: blur(8px) saturate(160%);
 }
+.nav-tabs .nav-link.active::after {
+    transform: scaleX(1); /* Full underline for active */
+    box-shadow: 0 0 8px rgba(var(--accent-cyan),0.5);
+}
+
 
 .tab-content {
     padding: 1.5rem;
@@ -797,11 +918,25 @@ pre {
     border-radius: 0;
     border: none;
     padding: 1.1rem 1.5rem;
-    transition: var(--main-transition);
+    transition: var(--main-transition), background-color 0.25s ease-out, color 0.25s ease-out; /* Refined transition */
     width: 100%;
     text-align: left;
     box-shadow: none; /* Remove default bootstrap shadow */
+    position: relative;
 }
+.accordion-button::before { /* Left border accent for open state */
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: var(--accent-cyan);
+    transform: scaleY(0);
+    transition: transform 0.3s ease-in-out;
+    border-radius: var(--border-radius-md) 0 0 var(--border-radius-md); /* Match item's left radius */
+}
+
 /* Ensure top corners are rounded for the first item's button */
 .accordion-item:first-child > .accordion-header > .accordion-button {
     border-top-left-radius: var(--border-radius-md);
@@ -816,10 +951,14 @@ pre {
 
 
 .accordion-button:not(.collapsed) {
-    background: rgba(var(--accent-cyan), 0.15); /* More prominent when open */
+    background: rgba(var(--accent-cyan), 0.2); /* Slightly more prominent when open */
     color: var(--accent-cyan);
-    font-weight: 600;
-    border-bottom: 1px solid rgba(var(--accent-cyan), 0.25); /* Separator when open */
+    font-weight: 700; /* Bolder when open */
+    border-bottom: 1px solid rgba(var(--accent-cyan), 0.3); /* Stronger separator when open */
+    box-shadow: inset 0 -2px 10px rgba(var(--accent-cyan),0.05);
+}
+.accordion-button:not(.collapsed)::before {
+    transform: scaleY(1); /* Show left border accent */
 }
 
 
