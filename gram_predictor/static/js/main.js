@@ -112,4 +112,308 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         console.error("tsParticles library not found.");
     }
+
+    // Prediction page specific JavaScript
+    const fileForm = document.getElementById('fileForm');
+    const textForm = document.getElementById('textForm');
+    const fastaFileEl = document.getElementById('fastaFile');
+    const fastaTextEl = document.getElementById('fastaText');
+    const dropZone = document.getElementById('dropZone');
+    const selectedFileNameEl = document.querySelector('.selected-file-name');
+    
+    const loadingSection = document.getElementById('loadingSection');
+    const resultsSection = document.getElementById('resultsSection');
+    const errorSection = document.getElementById('errorSection');
+    const errorMessageEl = document.getElementById('errorMessage');
+    
+    const totalSequencesEl = document.getElementById('totalSequences');
+    const positiveCountEl = document.getElementById('positiveCount');
+    const positivePercentageEl = document.getElementById('positivePercentage');
+    const resultsTableBodyEl = document.getElementById('resultsTableBody');
+    const exportCSVBtn = document.getElementById('exportCSV');
+    const exportFASTABtn = document.getElementById('exportFASTA');
+    const loadExampleBtn = document.getElementById('loadExample');
+    const resetFormsBtn = document.getElementById('resetForms');
+
+    let resultChart = null;
+    let currentResultsData = null;
+
+    function showLoading() {
+        loadingSection.classList.remove('d-none');
+        resultsSection.classList.add('d-none');
+        errorSection.classList.add('d-none');
+    }
+
+    function showResults(data) {
+        loadingSection.classList.add('d-none');
+        resultsSection.classList.remove('d-none');
+        errorSection.classList.add('d-none');
+        
+        currentResultsData = data.results; // Store for export
+
+        totalSequencesEl.textContent = data.stats.total;
+        positiveCountEl.textContent = data.stats.positive;
+        positivePercentageEl.textContent = `${data.stats.positive_percentage}%`;
+
+        resultsTableBodyEl.innerHTML = ''; // Clear previous results
+        data.results.forEach(result => {
+            const row = resultsTableBodyEl.insertRow();
+            row.insertCell().textContent = result.id;
+            
+            const sequenceCell = row.insertCell();
+            sequenceCell.textContent = result.sequence.length > 30 ? result.sequence.substring(0, 27) + '...' : result.sequence;
+            if (result.sequence.length > 30) {
+                sequenceCell.title = result.sequence; // Show full sequence on hover
+            }
+
+            const probabilityCell = row.insertCell();
+            probabilityCell.textContent = result.probability !== -1.0 ? result.probability.toFixed(4) : 'N/A';
+            
+            const predictionCell = row.insertCell();
+            const badge = document.createElement('span');
+            badge.classList.add('badge');
+            if (result.prediction === 1) {
+                badge.classList.add('bg-success');
+                badge.textContent = 'Anti-Gram-Negative';
+            } else if (result.prediction === 0) {
+                badge.classList.add('bg-secondary');
+                badge.textContent = 'Non-Anti-Gram-Negative';
+            } else {
+                badge.classList.add('bg-danger');
+                badge.textContent = 'Error';
+            }
+            predictionCell.appendChild(badge);
+        });
+
+        renderChart(data.stats);
+    }
+
+    function showError(message) {
+        loadingSection.classList.add('d-none');
+        resultsSection.classList.add('d-none');
+        errorSection.classList.remove('d-none');
+        errorMessageEl.textContent = message;
+    }
+    
+    function resetUI() {
+        loadingSection.classList.add('d-none');
+        resultsSection.classList.add('d-none');
+        errorSection.classList.add('d-none');
+        if (fastaFileEl) fastaFileEl.value = '';
+        if (fastaTextEl) fastaTextEl.value = '';
+        if (selectedFileNameEl) selectedFileNameEl.textContent = '';
+        if (dropZone) dropZone.classList.remove('file-dropped');
+        currentResultsData = null;
+    }
+
+    async function handlePrediction(formData) {
+        showLoading();
+        try {
+            const response = await fetch('/predict', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (response.ok && data.success) {
+                showResults(data);
+            } else {
+                showError(data.error || 'An unknown error occurred.');
+            }
+        } catch (error) {
+            console.error('Prediction error:', error);
+            showError('Failed to connect to the server. Please try again.');
+        }
+    }
+
+    if (fileForm) {
+        fileForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            if (fastaFileEl.files.length > 0) {
+                formData.append('fasta_file', fastaFileEl.files[0]);
+                handlePrediction(formData);
+            } else {
+                showError('Please select a FASTA file.');
+            }
+        });
+    }
+
+    if (textForm) {
+        textForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const fastaContent = fastaTextEl.value.trim();
+            if (fastaContent) {
+                const formData = new FormData();
+                formData.append('fasta_text', fastaContent);
+                handlePrediction(formData);
+            } else {
+                showError('Please enter FASTA sequence data.');
+            }
+        });
+    }
+    
+    if (fastaFileEl && selectedFileNameEl) {
+        fastaFileEl.addEventListener('change', () => {
+            if (fastaFileEl.files.length > 0) {
+                selectedFileNameEl.textContent = fastaFileEl.files[0].name;
+                if (dropZone) dropZone.classList.add('file-dropped');
+            } else {
+                selectedFileNameEl.textContent = '';
+                if (dropZone) dropZone.classList.remove('file-dropped');
+            }
+        });
+    }
+
+    if (dropZone) {
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) {
+                const file = e.dataTransfer.files[0];
+                if (file.name.endsWith('.fasta') || file.name.endsWith('.fa') || file.name.endsWith('.txt')) {
+                    fastaFileEl.files = e.dataTransfer.files;
+                    selectedFileNameEl.textContent = file.name;
+                    dropZone.classList.add('file-dropped');
+                } else {
+                    showError('Invalid file type. Please upload a .fasta, .fa, or .txt file.');
+                    selectedFileNameEl.textContent = '';
+                    dropZone.classList.remove('file-dropped');
+                }
+            }
+        });
+        // Allow clicking on dropzone to open file dialog
+        dropZone.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'LABEL' && e.target.tagName !== 'BUTTON') {
+                 if (fastaFileEl) fastaFileEl.click();
+            }
+        });
+    }
+
+    if (loadExampleBtn && fastaTextEl) {
+        loadExampleBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/example');
+                const data = await response.json();
+                if (data.fasta) {
+                    fastaTextEl.value = data.fasta;
+                    // Switch to text input tab if not active
+                    const textTabButton = document.getElementById('text-tab');
+                    if (textTabButton) {
+                        new bootstrap.Tab(textTabButton).show();
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading example:', error);
+                showError('Failed to load example data.');
+            }
+        });
+    }
+    
+    if (resetFormsBtn) {
+        resetFormsBtn.addEventListener('click', resetUI);
+    }
+
+    function renderChart(stats) {
+        const ctx = document.getElementById('resultChart').getContext('2d');
+        if (resultChart) {
+            resultChart.destroy();
+        }
+        resultChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Predicted Positive', 'Predicted Negative/Failed'],
+                datasets: [{
+                    label: 'Prediction Distribution',
+                    data: [stats.positive, stats.total - stats.positive],
+                    backgroundColor: [
+                        'rgba(40, 167, 69, 0.7)', // Success (green)
+                        'rgba(108, 117, 125, 0.7)'  // Secondary (gray)
+                    ],
+                    borderColor: [
+                        'rgba(40, 167, 69, 1)',
+                        'rgba(108, 117, 125, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Prediction Outcome Distribution'
+                    }
+                }
+            }
+        });
+    }
+
+    async function exportData(format) {
+        if (!currentResultsData || currentResultsData.length === 0) {
+            showError('No results to export.');
+            return;
+        }
+        try {
+            const response = await fetch('/export', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    results: currentResultsData,
+                    format: format
+                })
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                
+                const contentDisposition = response.headers.get('content-disposition');
+                let filename = `prediction_results.${format}`; // Default filename
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+                    if (filenameMatch && filenameMatch.length > 1) {
+                        filename = filenameMatch[1];
+                    }
+                }
+                a.download = filename;
+                
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+            } else {
+                const errorData = await response.json();
+                showError(errorData.error || `Failed to export ${format.toUpperCase()}.`);
+            }
+        } catch (error) {
+            console.error(`Export ${format} error:`, error);
+            showError(`An error occurred while exporting ${format.toUpperCase()}.`);
+        }
+    }
+
+    if (exportCSVBtn) {
+        exportCSVBtn.addEventListener('click', () => exportData('csv'));
+    }
+    if (exportFASTABtn) {
+        exportFASTABtn.addEventListener('click', () => exportData('fasta'));
+    }
+    
+    // Initial UI reset
+    resetUI();
 });
