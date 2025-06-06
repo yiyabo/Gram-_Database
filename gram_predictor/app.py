@@ -260,19 +260,23 @@ def before_first_request_func():
         load_app_dependencies()
 
 @app.route('/')
-def index():
-    return render_template('index.html')
+def predict_submit_page(): # Renamed from index, will serve the new submit page
+    return render_template('predict_submit.html')
+
+@app.route('/predict/results')
+def predict_results_page(): # New route for displaying results
+    return render_template('predict_results.html')
 
 @app.route('/about')
-def about():
+def about_page(): # Renamed for consistency with url_for in new templates
     return render_template('about.html')
 
 @app.route('/generate')
-def generate():
+def generate_page(): # Renamed for consistency with url_for in new templates
     return render_template('generate.html')
 
 @app.route('/predict', methods=['POST'])
-def predict_sequence_route(): # Renamed to avoid conflict with any potential local 'predict_sequence'
+def predict_sequence_api(): # Renamed to clarify it's an API endpoint
     global keras_model_global, global_feature_scaler_app 
     try:
         temp_fasta = os.path.join(app.config['UPLOAD_FOLDER'], f"{uuid.uuid4()}.fasta")
