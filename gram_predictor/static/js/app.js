@@ -214,6 +214,8 @@ document.addEventListener('DOMContentLoaded', () => {
             renderFeatureBarChart(data.results);
             renderScatterPlot(data.results);
             renderAACompositionChart(data.results);
+            // renderRadarChart(data.results); // Disabled for now
+            renderProbabilityHistogram(data.results);
 
             // DataTable
             if ($.fn.dataTable.isDataTable('#resultsDataTable')) {
@@ -286,8 +288,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const features = ['Charge', 'Hydrophobicity', 'Hydrophobic_Moment'];
 
             const calcAverage = (data, key) => {
-                if (data.length === 0) return 0;
-                const sum = data.reduce((acc, curr) => acc + curr.features[key], 0);
+                if (!data || data.length === 0) return 0;
+                const sum = data.reduce((acc, curr) => acc + (curr.features[key] || 0), 0);
                 return sum / data.length;
             };
 
@@ -399,12 +401,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const negativeData = results.filter(r => r.prediction === 0);
 
             const calcAAFrequencies = (data) => {
-                if (data.length === 0) return aminoAcids.map(() => 0);
-                const totalLength = data.reduce((sum, r) => sum + r.sequence.length, 0);
+                if (!data || data.length === 0) return aminoAcids.map(() => 0);
+                const totalLength = data.reduce((sum, r) => sum + (r.sequence ? r.sequence.length : 0), 0);
+                if (totalLength === 0) return aminoAcids.map(() => 0);
+
                 const aaCounts = aminoAcids.map(aa =>
-                    data.reduce((sum, r) => sum + (r.features[`AA_${aa}`] * r.sequence.length), 0)
+                    data.reduce((sum, r) => sum + ((r.features[`AA_${aa}`] || 0) * (r.sequence ? r.sequence.length : 0)), 0)
                 );
-                return aaCounts.map(count => (count / totalLength) * 100); // Return as percentage
+                return aaCounts.map(count => (count / totalLength) * 100);
             };
 
             const positiveFreqs = calcAAFrequencies(positiveData);
@@ -434,6 +438,113 @@ document.addEventListener('DOMContentLoaded', () => {
                     scales: {
                         y: { title: { display: true, text: 'Frequency (%)', color: 'white' }, ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } },
                         x: { ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                    }
+                }
+            });
+        };
+
+        /*
+        const renderRadarChart = (results) => {
+            const canvas = document.getElementById('featureRadarChart');
+            if (!canvas) return;
+
+            const features = ['Charge', 'Hydrophobicity', 'Hydrophobic_Moment', 'Instability_Index', 'Aliphatic_Index'];
+            const positiveData = results.filter(r => r.prediction === 1);
+            const negativeData = results.filter(r => r.prediction === 0);
+
+            const getAverages = (data) => {
+                if (!data || data.length === 0) return features.map(() => 0);
+                return features.map(key => {
+                    const sum = data.reduce((acc, curr) => acc + (curr.features[key] || 0), 0);
+                    return sum / data.length;
+                });
+            };
+
+            const posAvgs = getAverages(positiveData);
+            const negAvgs = getAverages(negativeData);
+
+            // Normalize data for radar chart
+            const allValues = posAvgs.concat(negAvgs);
+            const minValues = features.map((_, i) => Math.min(posAvgs[i], negAvgs[i]));
+            const maxValues = features.map((_, i) => Math.max(posAvgs[i], negAvgs[i]));
+
+            const normalize = (values) => values.map((v, i) => {
+                const range = maxValues[i] - minValues[i];
+                return range > 0 ? (v - minValues[i]) / range : 0;
+            });
+
+            let existingChart = Chart.getChart(canvas);
+            if (existingChart) existingChart.destroy();
+
+            new Chart(canvas.getContext('2d'), {
+                type: 'radar',
+                data: {
+                    labels: features,
+                    datasets: [{
+                        label: 'Positive',
+                        data: normalize(posAvgs),
+                        backgroundColor: 'rgba(40, 167, 69, 0.4)',
+                        borderColor: 'rgba(40, 167, 69, 1)',
+                        pointBackgroundColor: 'rgba(40, 167, 69, 1)'
+                    }, {
+                        label: 'Negative',
+                        data: normalize(negAvgs),
+                        backgroundColor: 'rgba(108, 117, 125, 0.4)',
+                        borderColor: 'rgba(108, 117, 125, 1)',
+                        pointBackgroundColor: 'rgba(108, 117, 125, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: 'white' } } },
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255,255,255,0.2)' },
+                            grid: { color: 'rgba(255,255,255,0.2)' },
+                            pointLabels: { font: { size: 12 }, color: 'white' },
+                            ticks: { display: false }
+                        }
+                    }
+                }
+            });
+        };
+        */
+
+        const renderProbabilityHistogram = (results) => {
+            const canvas = document.getElementById('probabilityHistogram');
+            if (!canvas) return;
+
+            const probabilities = results.map(r => r.probability);
+            const bins = Array(10).fill(0);
+            probabilities.forEach(p => {
+                if (p >= 0) {
+                    const binIndex = Math.min(Math.floor(p * 10), 9);
+                    bins[binIndex]++;
+                }
+            });
+            const labels = bins.map((_, i) => `${(i * 0.1).toFixed(1)}-${((i + 1) * 0.1).toFixed(1)}`);
+
+            let existingChart = Chart.getChart(canvas);
+            if (existingChart) existingChart.destroy();
+
+            new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Number of Sequences',
+                        data: bins,
+                        backgroundColor: 'rgba(0, 123, 255, 0.7)',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { title: { display: true, text: 'Count', color: 'white' }, ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                        x: { title: { display: true, text: 'Prediction Probability', color: 'white' }, ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } }
                     }
                 }
             });
