@@ -212,6 +212,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             renderFeatureBarChart(data.results);
+            renderScatterPlot(data.results);
+            renderAACompositionChart(data.results);
 
             // DataTable
             if ($.fn.dataTable.isDataTable('#resultsDataTable')) {
@@ -336,6 +338,102 @@ document.addEventListener('DOMContentLoaded', () => {
                             ticks: { color: 'white' },
                             grid: { color: 'rgba(255,255,255,0.1)' }
                         }
+                    }
+                }
+            });
+        };
+
+        const renderScatterPlot = (results) => {
+            const canvas = document.getElementById('featureScatterPlot');
+            if (!canvas) return;
+
+            const positiveData = results.filter(r => r.prediction === 1).map(r => ({x: r.features.Hydrophobicity, y: r.features.Charge}));
+            const negativeData = results.filter(r => r.prediction === 0).map(r => ({x: r.features.Hydrophobicity, y: r.features.Charge}));
+
+            let existingChart = Chart.getChart(canvas);
+            if (existingChart) existingChart.destroy();
+
+            new Chart(canvas.getContext('2d'), {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Positive',
+                        data: positiveData,
+                        backgroundColor: 'rgba(40, 167, 69, 0.7)'
+                    }, {
+                        label: 'Negative',
+                        data: negativeData,
+                        backgroundColor: 'rgba(108, 117, 125, 0.7)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: 'white' } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) { label += ': '; }
+                                    label += `(Hydrophobicity: ${context.parsed.x.toFixed(2)}, Charge: ${context.parsed.y.toFixed(2)})`;
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { title: { display: true, text: 'Charge', color: 'white' }, ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                        x: { title: { display: true, text: 'Hydrophobicity', color: 'white' }, ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                    }
+                }
+            });
+        };
+
+        const renderAACompositionChart = (results) => {
+            const canvas = document.getElementById('aaCompositionChart');
+            if (!canvas) return;
+
+            const aminoAcids = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y'];
+            const positiveData = results.filter(r => r.prediction === 1);
+            const negativeData = results.filter(r => r.prediction === 0);
+
+            const calcAAFrequencies = (data) => {
+                if (data.length === 0) return aminoAcids.map(() => 0);
+                const totalLength = data.reduce((sum, r) => sum + r.sequence.length, 0);
+                const aaCounts = aminoAcids.map(aa =>
+                    data.reduce((sum, r) => sum + (r.features[`AA_${aa}`] * r.sequence.length), 0)
+                );
+                return aaCounts.map(count => (count / totalLength) * 100); // Return as percentage
+            };
+
+            const positiveFreqs = calcAAFrequencies(positiveData);
+            const negativeFreqs = calcAAFrequencies(negativeData);
+
+            let existingChart = Chart.getChart(canvas);
+            if (existingChart) existingChart.destroy();
+
+            new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: aminoAcids,
+                    datasets: [{
+                        label: 'Positive Freq (%)',
+                        data: positiveFreqs,
+                        backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                    }, {
+                        label: 'Negative Freq (%)',
+                        data: negativeFreqs,
+                        backgroundColor: 'rgba(108, 117, 125, 0.7)',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: 'white' } } },
+                    scales: {
+                        y: { title: { display: true, text: 'Frequency (%)', color: 'white' }, ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                        x: { ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.1)' } }
                     }
                 }
             });

@@ -110,13 +110,33 @@
             </div>
         </div>
 
-        <!-- Feature Average Charts -->
+        <!-- Feature Charts Tabbed Interface -->
         <div class="card shadow-sm mb-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="bi bi-bar-chart-line"></i> Key Feature Averages</h5>
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="feature-charts-tab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="averages-tab" data-bs-toggle="tab" data-bs-target="#averages-pane" type="button" role="tab">Feature Averages</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="scatter-tab" data-bs-toggle="tab" data-bs-target="#scatter-pane" type="button" role="tab">Scatter Plot</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="composition-tab" data-bs-toggle="tab" data-bs-target="#composition-pane" type="button" role="tab">AA Composition</button>
+                    </li>
+                </ul>
             </div>
             <div class="card-body">
-                <canvas id="featureBarChart"></canvas>
+                <div class="tab-content" id="feature-charts-tabContent">
+                    <div class="tab-pane fade show active" id="averages-pane" role="tabpanel">
+                        <div style="height:300px;"><canvas id="featureBarChart"></canvas></div>
+                    </div>
+                    <div class="tab-pane fade" id="scatter-pane" role="tabpanel">
+                        <div style="height:300px;"><canvas id="featureScatterPlot"></canvas></div>
+                    </div>
+                    <div class="tab-pane fade" id="composition-pane" role="tabpanel">
+                        <div style="height:300px;"><canvas id="aaCompositionChart"></canvas></div>
+                    </div>
+                </div>
             </div>
         </div>
         
