@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderFeatureBarChart(data.results);
             renderScatterPlot(data.results);
             renderAACompositionChart(data.results);
-            // renderRadarChart(data.results); // Disabled for now
+            renderRadarChart(data.results);
             renderProbabilityHistogram(data.results);
 
             // DataTable
@@ -289,8 +289,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const calcAverage = (data, key) => {
                 if (!data || data.length === 0) return 0;
-                const sum = data.reduce((acc, curr) => acc + (curr.features[key] || 0), 0);
-                return sum / data.length;
+                const validValues = data
+                    .map(item => item.features && item.features[key])
+                    .filter(val => val !== undefined && val !== null && !isNaN(val) && isFinite(val));
+                
+                if (validValues.length === 0) return 0;
+                const sum = validValues.reduce((acc, curr) => acc + curr, 0);
+                return sum / validValues.length;
             };
 
             const positiveAvgs = features.map(f => calcAverage(positiveData, f));
@@ -349,8 +354,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const canvas = document.getElementById('featureScatterPlot');
             if (!canvas) return;
 
-            const positiveData = results.filter(r => r.prediction === 1).map(r => ({x: r.features.Hydrophobicity, y: r.features.Charge}));
-            const negativeData = results.filter(r => r.prediction === 0).map(r => ({x: r.features.Hydrophobicity, y: r.features.Charge}));
+            const positiveData = results
+                .filter(r => r.prediction === 1)
+                .map(r => ({
+                    x: r.features.Hydrophobicity,
+                    y: r.features.Charge
+                }))
+                .filter(point =>
+                    point.x !== undefined && point.y !== undefined &&
+                    !isNaN(point.x) && !isNaN(point.y) &&
+                    isFinite(point.x) && isFinite(point.y)
+                );
+            
+            const negativeData = results
+                .filter(r => r.prediction === 0)
+                .map(r => ({
+                    x: r.features.Hydrophobicity,
+                    y: r.features.Charge
+                }))
+                .filter(point =>
+                    point.x !== undefined && point.y !== undefined &&
+                    !isNaN(point.x) && !isNaN(point.y) &&
+                    isFinite(point.x) && isFinite(point.y)
+                );
 
             let existingChart = Chart.getChart(canvas);
             if (existingChart) existingChart.destroy();
@@ -443,73 +469,182 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
-        /*
         const renderRadarChart = (results) => {
             const canvas = document.getElementById('featureRadarChart');
             if (!canvas) return;
 
-            const features = ['Charge', 'Hydrophobicity', 'Hydrophobic_Moment', 'Instability_Index', 'Aliphatic_Index'];
-            const positiveData = results.filter(r => r.prediction === 1);
-            const negativeData = results.filter(r => r.prediction === 0);
+            try {
+                const features = ['Charge', 'Hydrophobicity', 'Hydrophobic_Moment', 'Instability_Index', 'Aliphatic_Index'];
+                const positiveData = results.filter(r => r.prediction === 1);
+                const negativeData = results.filter(r => r.prediction === 0);
 
-            const getAverages = (data) => {
-                if (!data || data.length === 0) return features.map(() => 0);
-                return features.map(key => {
-                    const sum = data.reduce((acc, curr) => acc + (curr.features[key] || 0), 0);
-                    return sum / data.length;
-                });
-            };
+                // 安全的平均值计算函数，增加数据验证
+                const getAverages = (data) => {
+                    if (!data || data.length === 0) return features.map(() => 0);
+                    return features.map(key => {
+                        const validValues = data
+                            .map(item => item.features && item.features[key])
+                            .filter(val => val !== undefined && val !== null && !isNaN(val) && isFinite(val));
+                        
+                        if (validValues.length === 0) return 0;
+                        const sum = validValues.reduce((acc, curr) => acc + curr, 0);
+                        return sum / validValues.length;
+                    });
+                };
 
-            const posAvgs = getAverages(positiveData);
-            const negAvgs = getAverages(negativeData);
+                const posAvgs = getAverages(positiveData);
+                const negAvgs = getAverages(negativeData);
 
-            // Normalize data for radar chart
-            const allValues = posAvgs.concat(negAvgs);
-            const minValues = features.map((_, i) => Math.min(posAvgs[i], negAvgs[i]));
-            const maxValues = features.map((_, i) => Math.max(posAvgs[i], negAvgs[i]));
+                // 验证计算出的平均值
+                const isValidArray = (arr) => arr.every(val =>
+                    val !== undefined && val !== null && !isNaN(val) && isFinite(val)
+                );
 
-            const normalize = (values) => values.map((v, i) => {
-                const range = maxValues[i] - minValues[i];
-                return range > 0 ? (v - minValues[i]) / range : 0;
-            });
+                if (!isValidArray(posAvgs) || !isValidArray(negAvgs)) {
+                    console.warn('雷达图：检测到无效数据值，跳过渲染');
+                    return;
+                }
 
-            let existingChart = Chart.getChart(canvas);
-            if (existingChart) existingChart.destroy();
-
-            new Chart(canvas.getContext('2d'), {
-                type: 'radar',
-                data: {
-                    labels: features,
-                    datasets: [{
-                        label: 'Positive',
-                        data: normalize(posAvgs),
-                        backgroundColor: 'rgba(40, 167, 69, 0.4)',
-                        borderColor: 'rgba(40, 167, 69, 1)',
-                        pointBackgroundColor: 'rgba(40, 167, 69, 1)'
-                    }, {
-                        label: 'Negative',
-                        data: normalize(negAvgs),
-                        backgroundColor: 'rgba(108, 117, 125, 0.4)',
-                        borderColor: 'rgba(108, 117, 125, 1)',
-                        pointBackgroundColor: 'rgba(108, 117, 125, 1)'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: 'white' } } },
-                    scales: {
-                        r: {
-                            angleLines: { color: 'rgba(255,255,255,0.2)' },
-                            grid: { color: 'rgba(255,255,255,0.2)' },
-                            pointLabels: { font: { size: 12 }, color: 'white' },
-                            ticks: { display: false }
+                // 使用改进的相对标准化，展示正负样本在每个特征上的相对强度
+                const normalize = (posValues, negValues) => {
+                    const posNormalized = [];
+                    const negNormalized = [];
+                    
+                    for (let i = 0; i < features.length; i++) {
+                        const posVal = posValues[i];
+                        const negVal = negValues[i];
+                        
+                        // 确保值是有效的数字
+                        if (!isFinite(posVal) || !isFinite(negVal)) {
+                            posNormalized.push(0.5);
+                            negNormalized.push(0.5);
+                            continue;
+                        }
+                        
+                        // 计算两个值的平均值作为基准
+                        const avgVal = (posVal + negVal) / 2;
+                        
+                        // 如果平均值为0，使用绝对值方法
+                        if (Math.abs(avgVal) < 1e-10) {
+                            const maxAbsVal = Math.max(Math.abs(posVal), Math.abs(negVal));
+                            if (maxAbsVal < 1e-10) {
+                                posNormalized.push(0.5);
+                                negNormalized.push(0.5);
+                            } else {
+                                posNormalized.push((Math.abs(posVal) / maxAbsVal) * 0.5 + 0.25);
+                                negNormalized.push((Math.abs(negVal) / maxAbsVal) * 0.5 + 0.25);
+                            }
+                        } else {
+                            // 使用相对于平均值的标准化
+                            const scale = Math.max(Math.abs(posVal - avgVal), Math.abs(negVal - avgVal));
+                            if (scale < 1e-10) {
+                                posNormalized.push(0.5);
+                                negNormalized.push(0.5);
+                            } else {
+                                // 将值映射到0.1到0.9的范围，0.5为中心点
+                                const posNorm = 0.5 + ((posVal - avgVal) / scale) * 0.4;
+                                const negNorm = 0.5 + ((negVal - avgVal) / scale) * 0.4;
+                                posNormalized.push(Math.max(0.1, Math.min(0.9, posNorm)));
+                                negNormalized.push(Math.max(0.1, Math.min(0.9, negNorm)));
+                            }
                         }
                     }
+                    
+                    return { pos: posNormalized, neg: negNormalized };
+                };
+
+                const normalizedData = normalize(posAvgs, negAvgs);
+                const normalizedPosData = normalizedData.pos;
+                const normalizedNegData = normalizedData.neg;
+
+                // 最终验证标准化数据
+                if (!isValidArray(normalizedPosData) || !isValidArray(normalizedNegData)) {
+                    console.warn('雷达图：标准化后数据无效，跳过渲染');
+                    return;
                 }
-            });
+
+                let existingChart = Chart.getChart(canvas);
+                if (existingChart) existingChart.destroy();
+
+                new Chart(canvas.getContext('2d'), {
+                    type: 'radar',
+                    data: {
+                        labels: features,
+                        datasets: [{
+                            label: `Positive (n=${positiveData.length})`,
+                            data: normalizedPosData,
+                            backgroundColor: 'rgba(40, 167, 69, 0.3)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            pointBackgroundColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 2,
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        }, {
+                            label: `Negative (n=${negativeData.length})`,
+                            data: normalizedNegData,
+                            backgroundColor: 'rgba(108, 117, 125, 0.3)',
+                            borderColor: 'rgba(108, 117, 125, 1)',
+                            pointBackgroundColor: 'rgba(108, 117, 125, 1)',
+                            borderWidth: 2,
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: { color: 'white' }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const featureIndex = context.dataIndex;
+                                        const isPositive = context.datasetIndex === 0;
+                                        const originalValue = isPositive ? posAvgs[featureIndex] : negAvgs[featureIndex];
+                                        const normalizedValue = context.parsed.r;
+                                        
+                                        return `${context.dataset.label}: ${originalValue.toFixed(3)} (标准化: ${normalizedValue.toFixed(3)})`;
+                                    },
+                                    title: function(tooltipItems) {
+                                        return `特征: ${tooltipItems[0].label}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            r: {
+                                angleLines: { color: 'rgba(255,255,255,0.2)' },
+                                grid: { color: 'rgba(255,255,255,0.2)' },
+                                pointLabels: {
+                                    font: { size: 12 },
+                                    color: 'white'
+                                },
+                                ticks: {
+                                    display: false,
+                                    beginAtZero: true,
+                                    min: 0,
+                                    max: 1
+                                },
+                                min: 0,
+                                max: 1
+                            }
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error('雷达图渲染错误:', error);
+                // 如果出现错误，在canvas上显示错误信息
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('雷达图渲染失败', canvas.width / 2, canvas.height / 2);
+            }
         };
-        */
 
         const renderProbabilityHistogram = (results) => {
             const canvas = document.getElementById('probabilityHistogram');
