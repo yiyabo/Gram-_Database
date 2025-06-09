@@ -164,7 +164,7 @@ def extract_features_from_fasta(fasta_file):
     print(f"Successfully extracted features and raw sequences for {len(df)} sequences.")
     return df
 
-def predict_with_hybrid_model_app(k_model, scaler, sequence_ids_list, sequence_strings_list, global_features_df, threshold=0.5):
+def predict_with_hybrid_model_app(k_model, scaler, sequence_ids_list, sequence_strings_list, global_features_df, threshold=0.8):
     """Makes predictions using the loaded Keras hybrid model and scaler."""
     print("!!!!!!!!!! DEBUG: predict_with_hybrid_model_app FUNCTION HAS BEEN CALLED !!!!!!!!!!")
     if not sequence_ids_list:
@@ -536,7 +536,7 @@ def predict_sequence_api(): # Renamed to clarify it's an API endpoint
             sequence_ids_list=sequence_ids_list,
             sequence_strings_list=sequence_strings_list,
             global_features_df=global_features_input_df,
-            threshold=0.5 
+            threshold=0.8 
         )
         
         if os.path.exists(temp_fasta):

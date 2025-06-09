@@ -700,12 +700,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                // 使用改进的相对标准化，展示正负样本在每个特征上的相对强度
-                const normalize = (posValues, negValues) => {
+                // 使用相对比较标准化，突出positive和negative之间的差异
+                const normalize = (posValues, negValues, allResultsData) => {
                     const posNormalized = [];
                     const negNormalized = [];
                     
                     for (let i = 0; i < features.length; i++) {
+                        const featureName = features[i];
                         const posVal = posValues[i];
                         const negVal = negValues[i];
                         
@@ -716,39 +717,37 @@ document.addEventListener('DOMContentLoaded', () => {
                             continue;
                         }
                         
-                        // 计算两个值的平均值作为基准
-                        const avgVal = (posVal + negVal) / 2;
+                        // 计算两组之间的差异比例
+                        const maxVal = Math.max(Math.abs(posVal), Math.abs(negVal));
+                        const diff = Math.abs(posVal - negVal);
                         
-                        // 如果平均值为0，使用绝对值方法
-                        if (Math.abs(avgVal) < 1e-10) {
-                            const maxAbsVal = Math.max(Math.abs(posVal), Math.abs(negVal));
-                            if (maxAbsVal < 1e-10) {
-                                posNormalized.push(0.5);
-                                negNormalized.push(0.5);
-                            } else {
-                                posNormalized.push((Math.abs(posVal) / maxAbsVal) * 0.5 + 0.25);
-                                negNormalized.push((Math.abs(negVal) / maxAbsVal) * 0.5 + 0.25);
-                            }
+                        // 如果两个值都接近0或者差异很小，使用中心值
+                        if (maxVal < 1e-10 || diff < 1e-10) {
+                            posNormalized.push(0.5);
+                            negNormalized.push(0.5);
+                            continue;
+                        }
+                        
+                        // 使用相对差异进行标准化，放大差异显示
+                        const center = 0.5;
+                        const scale = 0.3; // 控制偏离中心的最大幅度
+                        
+                        // 计算相对位置：哪个值更大就向外偏移
+                        if (posVal > negVal) {
+                            const ratio = Math.min(diff / Math.abs(posVal), 1.0); // 限制最大比例
+                            posNormalized.push(center + scale * ratio);
+                            negNormalized.push(center - scale * ratio);
                         } else {
-                            // 使用相对于平均值的标准化
-                            const scale = Math.max(Math.abs(posVal - avgVal), Math.abs(negVal - avgVal));
-                            if (scale < 1e-10) {
-                                posNormalized.push(0.5);
-                                negNormalized.push(0.5);
-                            } else {
-                                // 将值映射到0.1到0.9的范围，0.5为中心点
-                                const posNorm = 0.5 + ((posVal - avgVal) / scale) * 0.4;
-                                const negNorm = 0.5 + ((negVal - avgVal) / scale) * 0.4;
-                                posNormalized.push(Math.max(0.1, Math.min(0.9, posNorm)));
-                                negNormalized.push(Math.max(0.1, Math.min(0.9, negNorm)));
-                            }
+                            const ratio = Math.min(diff / Math.abs(negVal), 1.0);
+                            posNormalized.push(center - scale * ratio);
+                            negNormalized.push(center + scale * ratio);
                         }
                     }
                     
                     return { pos: posNormalized, neg: negNormalized };
                 };
 
-                const normalizedData = normalize(posAvgs, negAvgs);
+                const normalizedData = normalize(posAvgs, negAvgs, results);
                 const normalizedPosData = normalizedData.pos;
                 const normalizedNegData = normalizedData.neg;
 
