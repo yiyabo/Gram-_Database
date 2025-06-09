@@ -129,6 +129,9 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="histogram-tab" data-bs-toggle="tab" data-bs-target="#histogram-pane" type="button" role="tab">Probability Distribution</button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="sliding-window-tab" data-bs-toggle="tab" data-bs-target="#sliding-window-pane" type="button" role="tab">Sliding Window Analysis</button>
+                    </li>
                 </ul>
             </div>
             <div class="card-body">
@@ -147,6 +150,9 @@
                     </div>
                     <div class="tab-pane fade" id="histogram-pane" role="tabpanel">
                         <div style="height:300px;"><canvas id="probabilityHistogram"></canvas></div>
+                    </div>
+                    <div class="tab-pane fade" id="sliding-window-pane" role="tabpanel">
+                        <div style="height:400px;"><canvas id="slidingWindowChart"></canvas></div>
                     </div>
                 </div>
             </div>

@@ -280,6 +280,69 @@ def generate_box_plot_data(results_with_features_df):
     
     return box_plot_data
 
+def calculate_sliding_window_features(sequence, window_size=3):
+    """计算序列滑动窗口特征"""
+    from peptides import Peptide
+    
+    if len(sequence) < window_size:
+        return []
+    
+    window_data = []
+    for i in range(len(sequence) - window_size + 1):
+        window_seq = sequence[i:i + window_size]
+        try:
+            pep = Peptide(window_seq)
+            window_features = {
+                'position': i + 1,  # 1-based position
+                'sequence': window_seq,
+                'hydrophobicity': float(pep.hydrophobicity(scale="Eisenberg")),
+                'charge': float(pep.charge(pH=7.4)),
+                'hydrophobic_moment': float(pep.hydrophobic_moment(window=min(11, len(window_seq))) or 0.0)
+            }
+            window_data.append(window_features)
+        except Exception as e:
+            # 如果计算失败，使用默认值
+            window_data.append({
+                'position': i + 1,
+                'sequence': window_seq,
+                'hydrophobicity': 0.0,
+                'charge': 0.0,
+                'hydrophobic_moment': 0.0
+            })
+    
+    return window_data
+
+def generate_sliding_window_data(results_with_features_df, window_size=3):
+    """为预测结果生成滑动窗口分析数据"""
+    # 只处理前10个序列以避免计算量过大
+    sample_sequences = results_with_features_df.head(10)
+    
+    sliding_window_data = {
+        'positive_samples': [],
+        'negative_samples': [],
+        'window_size': window_size
+    }
+    
+    for _, row in sample_sequences.iterrows():
+        sequence = row['Sequence']
+        prediction = row['Prediction']
+        
+        window_features = calculate_sliding_window_features(sequence, window_size)
+        
+        sample_data = {
+            'id': row['ID'],
+            'sequence': sequence,
+            'prediction': prediction,
+            'windows': window_features
+        }
+        
+        if prediction == 1:
+            sliding_window_data['positive_samples'].append(sample_data)
+        else:
+            sliding_window_data['negative_samples'].append(sample_data)
+    
+    return sliding_window_data
+
 # Initialize Flask application
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
@@ -439,11 +502,15 @@ def predict_sequence_api(): # Renamed to clarify it's an API endpoint
         # 生成箱线图数据
         box_plot_data = generate_box_plot_data(results_with_features_df)
         
+        # 生成滑动窗口分析数据
+        sliding_window_data = generate_sliding_window_data(results_with_features_df)
+        
         return jsonify({
             'success': True,
             'results': results_for_json,
             'stats': stats,
-            'box_plot_data': box_plot_data
+            'box_plot_data': box_plot_data,
+            'sliding_window_data': sliding_window_data
         })
     
     except Exception as e:

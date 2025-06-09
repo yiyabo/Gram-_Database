@@ -221,6 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderAACompositionChart(data.results);
             renderRadarChart(data.results);
             renderProbabilityHistogram(data.results);
+            renderSlidingWindowChart(data.sliding_window_data);
 
             // DataTable
             if ($.fn.dataTable.isDataTable('#resultsDataTable')) {
@@ -876,6 +877,149 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             });
+        };
+
+        const renderSlidingWindowChart = (slidingWindowData) => {
+            const canvas = document.getElementById('slidingWindowChart');
+            if (!canvas || !slidingWindowData) return;
+
+            try {
+                // 准备数据：选择第一个正样本和第一个负样本进行展示
+                const positiveSample = slidingWindowData.positive_samples[0];
+                const negativeSample = slidingWindowData.negative_samples[0];
+                
+                if (!positiveSample && !negativeSample) {
+                    console.warn('No sliding window data available');
+                    return;
+                }
+
+                // 准备图表数据
+                const datasets = [];
+                const features = ['hydrophobicity', 'charge', 'hydrophobic_moment'];
+                const featureNames = {
+                    'hydrophobicity': '疏水性',
+                    'charge': '电荷',
+                    'hydrophobic_moment': '疏水力矩'
+                };
+                const colors = {
+                    'hydrophobicity': 'rgba(54, 162, 235, 0.8)',
+                    'charge': 'rgba(255, 99, 132, 0.8)',
+                    'hydrophobic_moment': 'rgba(75, 192, 192, 0.8)'
+                };
+
+                // 为每个特征创建数据集
+                features.forEach((feature, index) => {
+                    if (positiveSample && positiveSample.windows.length > 0) {
+                        datasets.push({
+                            label: `${featureNames[feature]} (正样本)`,
+                            data: positiveSample.windows.map(window => ({
+                                x: window.position,
+                                y: window[feature]
+                            })),
+                            borderColor: colors[feature],
+                            backgroundColor: colors[feature],
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            tension: 0.3,
+                            yAxisID: 'y'
+                        });
+                    }
+
+                    if (negativeSample && negativeSample.windows.length > 0) {
+                        datasets.push({
+                            label: `${featureNames[feature]} (负样本)`,
+                            data: negativeSample.windows.map(window => ({
+                                x: window.position,
+                                y: window[feature]
+                            })),
+                            borderColor: colors[feature],
+                            backgroundColor: colors[feature],
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            tension: 0.3,
+                            borderDash: [5, 5],
+                            yAxisID: 'y'
+                        });
+                    }
+                });
+
+                // 销毁现有图表
+                let existingChart = Chart.getChart(canvas);
+                if (existingChart) existingChart.destroy();
+
+                // 创建线性图
+                new Chart(canvas.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                labels: { color: 'white' }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: function(tooltipItems) {
+                                        return `位置: ${tooltipItems[0].parsed.x}`;
+                                    },
+                                    label: function(context) {
+                                        const value = context.parsed.y.toFixed(3);
+                                        return `${context.dataset.label}: ${value}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                position: 'bottom',
+                                title: {
+                                    display: true,
+                                    text: '序列位置',
+                                    color: 'white'
+                                },
+                                ticks: {
+                                    color: 'white',
+                                    stepSize: 1
+                                },
+                                grid: {
+                                    color: 'rgba(255,255,255,0.1)'
+                                }
+                            },
+                            y: {
+                                type: 'linear',
+                                title: {
+                                    display: true,
+                                    text: '特征值',
+                                    color: 'white'
+                                },
+                                ticks: {
+                                    color: 'white'
+                                },
+                                grid: {
+                                    color: 'rgba(255,255,255,0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error('滑动窗口图表渲染错误:', error);
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('滑动窗口图表渲染失败', canvas.width / 2, canvas.height / 2);
+            }
         };
     };
 
