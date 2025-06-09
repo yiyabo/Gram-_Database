@@ -182,7 +182,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        let currentResultsData = [];
+        
         const renderResults = (data) => {
+            // Store current results for export functionality
+            currentResultsData = data.results;
+            
             // Stats
             const statsContainer = document.getElementById('stats-container');
             statsContainer.innerHTML = `
@@ -211,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            renderFeatureBarChart(data.results);
+            renderFeatureBoxPlot(data.box_plot_data);
             renderScatterPlot(data.results);
             renderAACompositionChart(data.results);
             renderRadarChart(data.results);
@@ -278,6 +283,194 @@ document.addEventListener('DOMContentLoaded', () => {
 
         newPredictionBtn?.addEventListener('click', () => switchView('submit'));
         resetViewBtn?.addEventListener('click', () => switchView('submit'));
+
+        // Export functionality
+        const exportCSVBtn = document.getElementById('exportCSV');
+        const exportFASTABtn = document.getElementById('exportFASTA');
+
+        exportCSVBtn?.addEventListener('click', async () => {
+            if (currentResultsData.length === 0) {
+                showToast('No data to export.', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch('/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ format: 'csv', results: currentResultsData })
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `gram_prediction_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    showToast('CSV exported successfully!', 'success');
+                } else {
+                    throw new Error('Export failed');
+                }
+            } catch (error) {
+                showToast('Export failed: ' + error.message, 'danger');
+            }
+        });
+
+        exportFASTABtn?.addEventListener('click', async () => {
+            if (currentResultsData.length === 0) {
+                showToast('No data to export.', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch('/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ format: 'fasta', results: currentResultsData })
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `gram_positive_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.fasta`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    showToast('FASTA exported successfully!', 'success');
+                } else {
+                    throw new Error('Export failed');
+                }
+            } catch (error) {
+                showToast('Export failed: ' + error.message, 'danger');
+            }
+        });
+
+        const renderFeatureBoxPlot = (boxPlotData) => {
+            const canvas = document.getElementById('featureBoxPlot');
+            if (!canvas || !boxPlotData) return;
+
+            try {
+                // 检查箱线图插件是否已加载
+                if (!Chart.registry.getController('boxplot')) {
+                    console.error('BoxPlot plugin not loaded');
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = 'white';
+                    ctx.font = '14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('箱线图插件未加载', canvas.width / 2, canvas.height / 2);
+                    return;
+                }
+
+                // 准备数据，只选择主要特征进行显示
+                const mainFeatures = ['Length', 'Charge', 'Hydrophobicity', 'Hydrophobic_Moment', 'Instability_Index', 'Isoelectric_Point', 'Aliphatic_Index'];
+                const filteredData = boxPlotData.filter(item => mainFeatures.includes(item.feature));
+                
+                if (filteredData.length === 0) {
+                    console.warn('No valid box plot data found');
+                    return;
+                }
+
+                const labels = filteredData.map(item => item.feature);
+                const boxData = filteredData.map(item => {
+                    const stats = item.stats;
+                    return [stats.min, stats.q1, stats.median, stats.q3, stats.max];
+                });
+
+                // 销毁现有图表
+                let existingChart = Chart.getChart(canvas);
+                if (existingChart) {
+                    existingChart.destroy();
+                }
+
+                // 创建箱线图
+                new Chart(canvas.getContext('2d'), {
+                    type: 'boxplot',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '特征分布',
+                            data: boxData,
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1,
+                            outlierColor: 'rgba(255, 99, 132, 0.8)',
+                            outlierRadius: 3,
+                            medianColor: 'rgba(255, 206, 86, 1)',
+                            medianWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const stats = context.raw;
+                                        return [
+                                            `最小值: ${stats[0].toFixed(3)}`,
+                                            `Q1: ${stats[1].toFixed(3)}`,
+                                            `中位数: ${stats[2].toFixed(3)}`,
+                                            `Q3: ${stats[3].toFixed(3)}`,
+                                            `最大值: ${stats[4].toFixed(3)}`
+                                        ];
+                                    },
+                                    title: function(tooltipItems) {
+                                        return `特征: ${tooltipItems[0].label}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: '特征值',
+                                    color: 'white'
+                                },
+                                ticks: {
+                                    color: 'white'
+                                },
+                                grid: {
+                                    color: 'rgba(255,255,255,0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: 'white',
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                },
+                                grid: {
+                                    color: 'rgba(255,255,255,0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error('箱线图渲染错误:', error);
+                // 如果出现错误，显示错误信息
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('箱线图渲染失败', canvas.width / 2, canvas.height / 2);
+            }
+        };
 
         const renderFeatureBarChart = (results) => {
             const canvas = document.getElementById('featureBarChart');

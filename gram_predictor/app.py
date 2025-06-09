@@ -18,6 +18,7 @@ from flask import Flask, render_template, request, jsonify, send_file
 import pandas as pd
 import numpy as np
 from io import StringIO, BytesIO
+import statistics
 from Bio import SeqIO
 from peptides import Peptide 
 from sklearn.preprocessing import StandardScaler
@@ -231,6 +232,54 @@ def predict_with_hybrid_model_app(k_model, scaler, sequence_ids_list, sequence_s
             print(f"  {label}: {count} ({percentage:.2f}%)")
     return results_df
 
+def calculate_box_plot_stats(data):
+    """计算箱线图统计数据（最小值、Q1、中位数、Q3、最大值）"""
+    if len(data) == 0:
+        return {'min': 0, 'q1': 0, 'median': 0, 'q3': 0, 'max': 0}
+    
+    # 过滤掉无效值
+    valid_data = [x for x in data if not (np.isnan(x) or np.isinf(x))]
+    if len(valid_data) == 0:
+        return {'min': 0, 'q1': 0, 'median': 0, 'q3': 0, 'max': 0}
+    
+    # 排序数据
+    sorted_data = sorted(valid_data)
+    
+    # 计算统计值
+    min_val = float(sorted_data[0])
+    max_val = float(sorted_data[-1])
+    median = float(statistics.median(sorted_data))
+    
+    # 计算四分位数
+    q1 = float(np.percentile(sorted_data, 25))
+    q3 = float(np.percentile(sorted_data, 75))
+    
+    return {
+        'min': min_val,
+        'q1': q1,
+        'median': median,
+        'q3': q3,
+        'max': max_val
+    }
+
+def generate_box_plot_data(results_with_features_df):
+    """为所有特征生成箱线图数据"""
+    # 获取所有数值特征列（排除ID、Sequence、Probability、Prediction、Label）
+    feature_columns = [col for col in results_with_features_df.columns
+                      if col not in ['ID', 'Sequence', 'Probability', 'Prediction', 'Label']]
+    
+    box_plot_data = []
+    for feature_name in feature_columns:
+        feature_values = results_with_features_df[feature_name].values
+        stats = calculate_box_plot_stats(feature_values)
+        
+        box_plot_data.append({
+            'feature': feature_name,
+            'stats': stats
+        })
+    
+    return box_plot_data
+
 # Initialize Flask application
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
@@ -387,10 +436,14 @@ def predict_sequence_api(): # Renamed to clarify it's an API endpoint
             'positive_percentage': round(sum(1 for r in results_for_json if r['prediction'] == 1) / valid_results_count * 100, 1) if valid_results_count > 0 else 0
         }
         
+        # 生成箱线图数据
+        box_plot_data = generate_box_plot_data(results_with_features_df)
+        
         return jsonify({
             'success': True,
             'results': results_for_json,
-            'stats': stats
+            'stats': stats,
+            'box_plot_data': box_plot_data
         })
     
     except Exception as e:
