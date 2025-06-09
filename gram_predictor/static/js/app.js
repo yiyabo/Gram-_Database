@@ -216,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            renderFeatureBoxPlot(data.box_plot_data);
+            renderFeatureBoxPlot(data.results);
             renderScatterPlot(data.results);
             renderAACompositionChart(data.results);
             renderRadarChart(data.results);
@@ -354,37 +354,114 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        const renderFeatureBoxPlot = (boxPlotData) => {
+        const renderFeatureBoxPlot = (results) => {
             const canvas = document.getElementById('featureBoxPlot');
-            if (!canvas || !boxPlotData) return;
+            if (!canvas || !results) return;
 
             try {
-                // 检查箱线图插件是否已加载
-                if (!Chart.registry.getController('boxplot')) {
-                    console.error('BoxPlot plugin not loaded');
-                    const ctx = canvas.getContext('2d');
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.fillStyle = 'white';
-                    ctx.font = '14px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('箱线图插件未加载', canvas.width / 2, canvas.height / 2);
-                    return;
-                }
-
-                // 准备数据，只选择主要特征进行显示
-                const mainFeatures = ['Length', 'Charge', 'Hydrophobicity', 'Hydrophobic_Moment', 'Instability_Index', 'Isoelectric_Point', 'Aliphatic_Index'];
-                const filteredData = boxPlotData.filter(item => mainFeatures.includes(item.feature));
+                // 分离positive和negative数据
+                const positiveData = results.filter(r => r.prediction === 1);
+                const negativeData = results.filter(r => r.prediction === 0);
                 
-                if (filteredData.length === 0) {
-                    console.warn('No valid box plot data found');
+                if (positiveData.length === 0 && negativeData.length === 0) {
+                    console.warn('No valid data for feature comparison');
                     return;
                 }
 
-                const labels = filteredData.map(item => item.feature);
-                const boxData = filteredData.map(item => {
-                    const stats = item.stats;
-                    return [stats.min, stats.q1, stats.median, stats.q3, stats.max];
+                // 主要特征和中文标签
+                const mainFeatures = ['Charge', 'Hydrophobicity', 'Hydrophobic_Moment', 'Instability_Index', 'Isoelectric_Point', 'Aliphatic_Index'];
+                const featureLabels = {
+                    'Charge': '电荷',
+                    'Hydrophobicity': '疏水性',
+                    'Hydrophobic_Moment': '疏水力矩',
+                    'Instability_Index': '不稳定指数',
+                    'Isoelectric_Point': '等电点',
+                    'Aliphatic_Index': '脂肪族指数'
+                };
+
+                // 计算每个特征的平均值和标准差
+                const calculateStats = (data, feature) => {
+                    const values = data
+                        .map(item => item.features && item.features[feature])
+                        .filter(val => val !== undefined && val !== null && !isNaN(val) && isFinite(val));
+                    
+                    if (values.length === 0) return { mean: 0, std: 0, values: [] };
+                    
+                    const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+                    const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+                    const std = Math.sqrt(variance);
+                    
+                    return { mean, std, values };
+                };
+
+                // 计算所有数据的全局统计，用于标准化
+                const getAllFeatureValues = (feature) => {
+                    const allValues = [...positiveData, ...negativeData]
+                        .map(item => item.features && item.features[feature])
+                        .filter(val => val !== undefined && val !== null && !isNaN(val) && isFinite(val));
+                    return allValues;
+                };
+
+                const labels = mainFeatures.map(f => featureLabels[f]);
+                const positiveStats = mainFeatures.map(f => calculateStats(positiveData, f));
+                const negativeStats = mainFeatures.map(f => calculateStats(negativeData, f));
+                
+                // 对每个特征进行Z-score标准化
+                const normalizedPositiveMeans = [];
+                const normalizedNegativeMeans = [];
+                const normalizedPositiveStds = [];
+                const normalizedNegativeStds = [];
+                const effectSizes = []; // Cohen's d 效应量
+
+                mainFeatures.forEach((feature, i) => {
+                    const allValues = getAllFeatureValues(feature);
+                    
+                    if (allValues.length === 0) {
+                        normalizedPositiveMeans.push(0);
+                        normalizedNegativeMeans.push(0);
+                        normalizedPositiveStds.push(0);
+                        normalizedNegativeStds.push(0);
+                        effectSizes.push(0);
+                        return;
+                    }
+                    
+                    // 计算全局均值和标准差用于标准化
+                    const globalMean = allValues.reduce((sum, val) => sum + val, 0) / allValues.length;
+                    const globalVariance = allValues.reduce((sum, val) => sum + Math.pow(val - globalMean, 2), 0) / allValues.length;
+                    const globalStd = Math.sqrt(globalVariance);
+                    
+                    // 避免除零错误
+                    if (globalStd === 0) {
+                        normalizedPositiveMeans.push(0);
+                        normalizedNegativeMeans.push(0);
+                        normalizedPositiveStds.push(0);
+                        normalizedNegativeStds.push(0);
+                        effectSizes.push(0);
+                        return;
+                    }
+                    
+                    // Z-score标准化
+                    const posNormalizedMean = (positiveStats[i].mean - globalMean) / globalStd;
+                    const negNormalizedMean = (negativeStats[i].mean - globalMean) / globalStd;
+                    const posNormalizedStd = positiveStats[i].std / globalStd;
+                    const negNormalizedStd = negativeStats[i].std / globalStd;
+                    
+                    normalizedPositiveMeans.push(posNormalizedMean);
+                    normalizedNegativeMeans.push(negNormalizedMean);
+                    normalizedPositiveStds.push(posNormalizedStd);
+                    normalizedNegativeStds.push(negNormalizedStd);
+                    
+                    // 计算Cohen's d效应量 (衡量两组差异的实际意义)
+                    const pooledStd = Math.sqrt((Math.pow(positiveStats[i].std, 2) + Math.pow(negativeStats[i].std, 2)) / 2);
+                    const cohensD = pooledStd > 0 ? (positiveStats[i].mean - negativeStats[i].mean) / pooledStd : 0;
+                    effectSizes.push(cohensD);
                 });
+
+                // 使用标准化后的数据
+                const positiveMeans = normalizedPositiveMeans;
+                const negativeMeans = normalizedNegativeMeans;
+                const positiveStds = normalizedPositiveStds;
+                const negativeStds = normalizedNegativeStds;
 
                 // 销毁现有图表
                 let existingChart = Chart.getChart(canvas);
@@ -392,40 +469,106 @@ document.addEventListener('DOMContentLoaded', () => {
                     existingChart.destroy();
                 }
 
-                // 创建箱线图
-                new Chart(canvas.getContext('2d'), {
-                    type: 'boxplot',
+                // 创建渐变背景
+                const ctx = canvas.getContext('2d');
+                const positiveGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                positiveGradient.addColorStop(0, 'rgba(40, 167, 69, 0.8)');
+                positiveGradient.addColorStop(1, 'rgba(40, 167, 69, 0.4)');
+                
+                const negativeGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                negativeGradient.addColorStop(0, 'rgba(108, 117, 125, 0.8)');
+                negativeGradient.addColorStop(1, 'rgba(108, 117, 125, 0.4)');
+
+                // 创建分组柱状图
+                new Chart(ctx, {
+                    type: 'bar',
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: '特征分布',
-                            data: boxData,
-                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            borderWidth: 1,
-                            outlierColor: 'rgba(255, 99, 132, 0.8)',
-                            outlierRadius: 3,
-                            medianColor: 'rgba(255, 206, 86, 1)',
-                            medianWidth: 2
+                            label: `抗菌肽 (n=${positiveData.length})`,
+                            data: positiveMeans,
+                            backgroundColor: positiveGradient,
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 2,
+                            errorBars: {
+                                '+': positiveStds,
+                                '-': positiveStds
+                            }
+                        }, {
+                            label: `非抗菌肽 (n=${negativeData.length})`,
+                            data: negativeMeans,
+                            backgroundColor: negativeGradient,
+                            borderColor: 'rgba(108, 117, 125, 1)',
+                            borderWidth: 2,
+                            errorBars: {
+                                '+': negativeStds,
+                                '-': negativeStds
+                            }
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        animation: {
+                            duration: 2000,
+                            easing: 'easeInOutQuart'
+                        },
                         plugins: {
+                            title: {
+                                display: true,
+                                text: '特征对比分析 (Z-score标准化)',
+                                color: 'white',
+                                font: {
+                                    size: 18,
+                                    weight: 'bold'
+                                },
+                                padding: {
+                                    top: 15,
+                                    bottom: 25
+                                }
+                            },
                             legend: {
-                                display: false
+                                labels: {
+                                    color: 'white',
+                                    font: {
+                                        size: 13,
+                                        weight: 'bold'
+                                    },
+                                    padding: 20,
+                                    usePointStyle: true,
+                                    pointStyle: 'rect'
+                                }
                             },
                             tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                                titleColor: 'white',
+                                bodyColor: 'white',
+                                borderColor: 'rgba(255, 255, 255, 0.3)',
+                                borderWidth: 1,
+                                cornerRadius: 10,
+                                displayColors: true,
                                 callbacks: {
                                     label: function(context) {
-                                        const stats = context.raw;
+                                        const datasetIndex = context.datasetIndex;
+                                        const featureIndex = context.dataIndex;
+                                        const normalizedMean = context.parsed.y;
+                                        const normalizedStd = datasetIndex === 0 ? positiveStds[featureIndex] : negativeStds[featureIndex];
+                                        const cohensD = effectSizes[featureIndex];
+                                        const originalMean = datasetIndex === 0 ? positiveStats[featureIndex].mean : negativeStats[featureIndex].mean;
+                                        
+                                        // 效应量解释
+                                        let effectText = '';
+                                        const absEffect = Math.abs(cohensD);
+                                        if (absEffect < 0.2) effectText = '(差异很小)';
+                                        else if (absEffect < 0.5) effectText = '(差异较小)';
+                                        else if (absEffect < 0.8) effectText = '(差异中等)';
+                                        else effectText = '(差异很大)';
+                                        
                                         return [
-                                            `最小值: ${stats[0].toFixed(3)}`,
-                                            `Q1: ${stats[1].toFixed(3)}`,
-                                            `中位数: ${stats[2].toFixed(3)}`,
-                                            `Q3: ${stats[3].toFixed(3)}`,
-                                            `最大值: ${stats[4].toFixed(3)}`
+                                            `${context.dataset.label}`,
+                                            `标准化值: ${normalizedMean.toFixed(3)}`,
+                                            `原始均值: ${originalMean.toFixed(3)}`,
+                                            `效应量: ${cohensD.toFixed(3)} ${effectText}`
                                         ];
                                     },
                                     title: function(tooltipItems) {
@@ -438,39 +581,172 @@ document.addEventListener('DOMContentLoaded', () => {
                             y: {
                                 title: {
                                     display: true,
-                                    text: '特征值',
-                                    color: 'white'
+                                    text: 'Z-score标准化值',
+                                    color: 'white',
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
                                 },
                                 ticks: {
-                                    color: 'white'
+                                    color: 'white',
+                                    font: {
+                                        size: 12
+                                    }
                                 },
                                 grid: {
-                                    color: 'rgba(255,255,255,0.1)'
+                                    color: 'rgba(255,255,255,0.15)',
+                                    lineWidth: 1
+                                },
+                                border: {
+                                    color: 'rgba(255,255,255,0.3)'
                                 }
                             },
                             x: {
+                                title: {
+                                    display: true,
+                                    text: '特征类型',
+                                    color: 'white',
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
+                                },
                                 ticks: {
                                     color: 'white',
                                     maxRotation: 45,
-                                    minRotation: 45
+                                    minRotation: 45,
+                                    font: {
+                                        size: 12,
+                                        weight: 'bold'
+                                    }
                                 },
                                 grid: {
-                                    color: 'rgba(255,255,255,0.1)'
+                                    color: 'rgba(255,255,255,0.1)',
+                                    lineWidth: 1
+                                },
+                                border: {
+                                    color: 'rgba(255,255,255,0.3)'
                                 }
                             }
+                        },
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
                         }
                     }
                 });
 
+                // 在图表下方添加效应量分析
+                setTimeout(() => {
+                    const significantFeatures = effectSizes
+                        .map((effect, i) => ({ 
+                            feature: labels[i], 
+                            cohensD: effect,
+                            positiveMean: normalizedPositiveMeans[i],
+                            negativeMean: normalizedNegativeMeans[i],
+                            originalPoseMean: positiveStats[i].mean,
+                            originalNegMean: negativeStats[i].mean
+                        }))
+                        .filter(item => Math.abs(item.cohensD) > 0.2) // 只显示有意义的差异
+                        .sort((a, b) => Math.abs(b.cohensD) - Math.abs(a.cohensD));
+                    
+                    if (significantFeatures.length > 0) {
+                        console.log('具有显著效应量的特征 (Cohen\'s d > 0.2):', significantFeatures);
+                        console.log('效应量解释: <0.2=很小, 0.2-0.5=较小, 0.5-0.8=中等, >0.8=很大');
+                    }
+                }, 1000);
+
             } catch (error) {
-                console.error('箱线图渲染错误:', error);
-                // 如果出现错误，显示错误信息
+                console.error('特征对比图渲染错误:', error);
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('特征对比图渲染失败', canvas.width / 2, canvas.height / 2);
+            }
+        };
+
+        // 替代方案：当箱线图插件不可用时使用
+        const renderFeatureBarChartAlternative = (boxPlotData, canvas) => {
+            try {
+                const mainFeatures = ['Length', 'Charge', 'Hydrophobicity', 'Hydrophobic_Moment', 'Instability_Index', 'Isoelectric_Point', 'Aliphatic_Index'];
+                const featureLabels = {
+                    'Length': '序列长度',
+                    'Charge': '电荷', 
+                    'Hydrophobicity': '疏水性',
+                    'Hydrophobic_Moment': '疏水力矩',
+                    'Instability_Index': '不稳定指数',
+                    'Isoelectric_Point': '等电点',
+                    'Aliphatic_Index': '脂肪族指数'
+                };
+                
+                const filteredData = boxPlotData.filter(item => mainFeatures.includes(item.feature));
+                
+                if (filteredData.length === 0) return;
+
+                const labels = filteredData.map(item => featureLabels[item.feature] || item.feature);
+                const medianData = filteredData.map(item => item.stats.median);
+                const q1Data = filteredData.map(item => item.stats.q1);
+                const q3Data = filteredData.map(item => item.stats.q3);
+
+                let existingChart = Chart.getChart(canvas);
+                if (existingChart) existingChart.destroy();
+
+                new Chart(canvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '中位数',
+                            data: medianData,
+                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }, {
+                            label: 'Q1-Q3范围',
+                            data: q3Data.map((q3, i) => q3 - q1Data[i]),
+                            backgroundColor: 'rgba(255, 206, 86, 0.5)',
+                            borderColor: 'rgba(255, 206, 86, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: '特征值分布（替代显示）',
+                                color: 'white',
+                                font: { size: 16 }
+                            },
+                            legend: {
+                                labels: { color: 'white' }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                title: { display: true, text: '特征值', color: 'white' },
+                                ticks: { color: 'white' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            },
+                            x: {
+                                ticks: { color: 'white', maxRotation: 45 },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('替代图表渲染失败:', error);
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = 'white';
                 ctx.font = '14px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('箱线图渲染失败', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('特征分布图渲染失败', canvas.width / 2, canvas.height / 2);
             }
         };
 
