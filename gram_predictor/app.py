@@ -28,11 +28,19 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences #type: ignore
 from collections import Counter
 import pickle
 import traceback # For detailed error logging
+import matplotlib
+matplotlib.use('Agg')  # 使用非交互式后端
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # 导入生成服务
 from generation_service import get_generation_service
 
 print("!!!!!!!!!! DEBUG: app.py IS LOADING FRESHLY (Hybrid Model Version) !!!!!!!!!!")
+
+# 创建图表保存目录
+CHARTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'charts')
+os.makedirs(CHARTS_DIR, exist_ok=True)
 
 # --- Constants and functions copied/adapted from hybrid_classifier.py ---
 AMINO_ACIDS = 'ACDEFGHIKLMNPQRSTVWY'
@@ -281,6 +289,420 @@ def generate_box_plot_data(results_with_features_df):
         })
     
     return box_plot_data
+
+def save_charts_to_files(results_with_features_df):
+    """保存各种图表到文件（覆盖模式）"""
+    try:
+        # 设置中文字体
+        plt.rcParams['font.sans-serif'] = ['Arial Unicode MS', 'SimHei', 'DejaVu Sans']
+        plt.rcParams['axes.unicode_minus'] = False
+        
+        # 分离positive和negative数据
+        positive_data = results_with_features_df[results_with_features_df['Prediction'] == 1]
+        negative_data = results_with_features_df[results_with_features_df['Prediction'] == 0]
+        
+        if len(positive_data) == 0 and len(negative_data) == 0:
+            print("Warning: No valid data for chart generation")
+            return
+        
+        # 1. 特征对比图 (模拟前端的Z-score标准化柱状图)
+        save_feature_comparison_chart(positive_data, negative_data)
+        
+        # 2. 雷达图
+        save_radar_chart(positive_data, negative_data)
+        
+        # 3. 散点图
+        save_scatter_plot(positive_data, negative_data)
+        
+        # 4. 氨基酸组成图
+        save_aa_composition_chart(positive_data, negative_data)
+        
+        # 5. 概率分布直方图
+        save_probability_histogram(results_with_features_df)
+        
+        # 6. 滑动窗口分析图
+        save_sliding_window_chart(results_with_features_df)
+        
+        # 7. 降维可视化图 (PCA + t-SNE)
+        save_dimensionality_reduction_charts(results_with_features_df)
+        
+        print(f"Charts saved to {CHARTS_DIR} (overwrite mode)")
+        
+    except Exception as e:
+        print(f"Error saving charts: {e}")
+        traceback.print_exc()
+
+def save_feature_comparison_chart(positive_data, negative_data):
+    """保存特征对比图"""
+    try:
+        features = ['Charge', 'Hydrophobicity', 'Hydrophobic_Moment', 'Instability_Index', 'Isoelectric_Point', 'Aliphatic_Index']
+        feature_labels = {
+            'Charge': '电荷',
+            'Hydrophobicity': '疏水性',
+            'Hydrophobic_Moment': '疏水力矩',
+            'Instability_Index': '不稳定指数',
+            'Isoelectric_Point': '等电点',
+            'Aliphatic_Index': '脂肪族指数'
+        }
+        
+        # 计算标准化数据（与前端一致）
+        pos_means = []
+        neg_means = []
+        labels = []
+        
+        for feature in features:
+            if feature in positive_data.columns and feature in negative_data.columns:
+                # 获取所有数据用于标准化
+                all_values = pd.concat([positive_data[feature], negative_data[feature]]).dropna()
+                if len(all_values) > 0:
+                    global_mean = all_values.mean()
+                    global_std = all_values.std()
+                    
+                    if global_std > 0:
+                        pos_norm = (positive_data[feature].mean() - global_mean) / global_std
+                        neg_norm = (negative_data[feature].mean() - global_mean) / global_std
+                        
+                        pos_means.append(pos_norm)
+                        neg_means.append(neg_norm)
+                        labels.append(feature_labels.get(feature, feature))
+        
+        if len(pos_means) > 0:
+            fig, ax = plt.subplots(figsize=(12, 8))
+            
+            x = np.arange(len(labels))
+            width = 0.35
+            
+            bars1 = ax.bar(x - width/2, pos_means, width, label=f'抗菌肽 (n={len(positive_data)})',
+                          color='#28a745', alpha=0.8)
+            bars2 = ax.bar(x + width/2, neg_means, width, label=f'非抗菌肽 (n={len(negative_data)})',
+                          color='#6c757d', alpha=0.8)
+            
+            ax.set_xlabel('特征类型', fontsize=14, fontweight='bold')
+            ax.set_ylabel('Z-score标准化值', fontsize=14, fontweight='bold')
+            ax.set_title('特征对比分析 (Z-score标准化)', fontsize=16, fontweight='bold')
+            ax.set_xticks(x)
+            ax.set_xticklabels(labels, rotation=45, ha='right')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+            
+            plt.tight_layout()
+            plt.savefig(os.path.join(CHARTS_DIR, 'feature_comparison.png'), 
+                       dpi=300, bbox_inches='tight', facecolor='white')
+            plt.close()
+            
+    except Exception as e:
+        print(f"Error saving feature comparison chart: {e}")
+
+def save_radar_chart(positive_data, negative_data):
+    """保存雷达图"""
+    try:
+        features = ['Charge', 'Hydrophobicity', 'Hydrophobic_Moment', 'Instability_Index', 'Aliphatic_Index']
+        
+        # 计算标准化数据（与前端雷达图算法一致）
+        pos_values = []
+        neg_values = []
+        valid_features = []
+        
+        for feature in features:
+            if feature in positive_data.columns and feature in negative_data.columns:
+                pos_mean = positive_data[feature].mean()
+                neg_mean = negative_data[feature].mean()
+                
+                if pd.notna(pos_mean) and pd.notna(neg_mean):
+                    # 使用相对差异标准化（与前端一致）
+                    max_val = max(abs(pos_mean), abs(neg_mean))
+                    diff = abs(pos_mean - neg_mean)
+                    
+                    if max_val > 1e-10 and diff > 1e-10:
+                        center = 0.5
+                        scale = 0.3
+                        
+                        if pos_mean > neg_mean:
+                            ratio = min(diff / abs(pos_mean), 1.0)
+                            pos_norm = center + scale * ratio
+                            neg_norm = center - scale * ratio
+                        else:
+                            ratio = min(diff / abs(neg_mean), 1.0)
+                            pos_norm = center - scale * ratio
+                            neg_norm = center + scale * ratio
+                    else:
+                        pos_norm = neg_norm = 0.5
+                    
+                    pos_values.append(pos_norm)
+                    neg_values.append(neg_norm)
+                    valid_features.append(feature)
+        
+        if len(valid_features) > 0:
+            # 创建雷达图
+            angles = np.linspace(0, 2 * np.pi, len(valid_features), endpoint=False).tolist()
+            angles += angles[:1]  # 闭合
+            pos_values += pos_values[:1]  # 闭合
+            neg_values += neg_values[:1]  # 闭合
+            
+            fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(projection='polar'))
+            
+            ax.plot(angles, pos_values, 'o-', linewidth=2, label=f'抗菌肽 (n={len(positive_data)})', 
+                   color='#28a745')
+            ax.fill(angles, pos_values, alpha=0.25, color='#28a745')
+            
+            ax.plot(angles, neg_values, 'o-', linewidth=2, label=f'非抗菌肽 (n={len(negative_data)})', 
+                   color='#6c757d')
+            ax.fill(angles, neg_values, alpha=0.25, color='#6c757d')
+            
+            ax.set_xticks(angles[:-1])
+            ax.set_xticklabels(valid_features)
+            ax.set_ylim(0, 1)
+            ax.set_title('特征雷达图对比', size=16, fontweight='bold', pad=20)
+            ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1.0))
+            ax.grid(True)
+            
+            plt.tight_layout()
+            plt.savefig(os.path.join(CHARTS_DIR, 'radar_chart.png'), 
+                       dpi=300, bbox_inches='tight', facecolor='white')
+            plt.close()
+            
+    except Exception as e:
+        print(f"Error saving radar chart: {e}")
+
+def save_scatter_plot(positive_data, negative_data):
+    """保存散点图"""
+    try:
+        if 'Hydrophobicity' in positive_data.columns and 'Charge' in positive_data.columns:
+            fig, ax = plt.subplots(figsize=(10, 8))
+            
+            # 绘制数据点
+            ax.scatter(positive_data['Hydrophobicity'], positive_data['Charge'], 
+                      alpha=0.7, c='#28a745', label=f'抗菌肽 (n={len(positive_data)})', s=50)
+            ax.scatter(negative_data['Hydrophobicity'], negative_data['Charge'], 
+                      alpha=0.7, c='#6c757d', label=f'非抗菌肽 (n={len(negative_data)})', s=50)
+            
+            ax.set_xlabel('疏水性', fontsize=14, fontweight='bold')
+            ax.set_ylabel('电荷', fontsize=14, fontweight='bold')
+            ax.set_title('疏水性 vs 电荷散点图', fontsize=16, fontweight='bold')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+            
+            plt.tight_layout()
+            plt.savefig(os.path.join(CHARTS_DIR, 'scatter_plot.png'), 
+                       dpi=300, bbox_inches='tight', facecolor='white')
+            plt.close()
+            
+    except Exception as e:
+        print(f"Error saving scatter plot: {e}")
+
+def save_aa_composition_chart(positive_data, negative_data):
+    """保存氨基酸组成图"""
+    try:
+        amino_acids = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
+        
+        pos_freqs = []
+        neg_freqs = []
+        
+        for aa in amino_acids:
+            aa_col = f'AA_{aa}'
+            if aa_col in positive_data.columns:
+                pos_freq = positive_data[aa_col].mean() * 100  # 转换为百分比
+                neg_freq = negative_data[aa_col].mean() * 100
+                pos_freqs.append(pos_freq)
+                neg_freqs.append(neg_freq)
+            else:
+                pos_freqs.append(0)
+                neg_freqs.append(0)
+        
+        fig, ax = plt.subplots(figsize=(15, 8))
+        
+        x = np.arange(len(amino_acids))
+        width = 0.35
+        
+        bars1 = ax.bar(x - width/2, pos_freqs, width, label=f'抗菌肽 (n={len(positive_data)})',
+                      color='#28a745', alpha=0.8)
+        bars2 = ax.bar(x + width/2, neg_freqs, width, label=f'非抗菌肽 (n={len(negative_data)})',
+                      color='#6c757d', alpha=0.8)
+        
+        ax.set_xlabel('氨基酸', fontsize=14, fontweight='bold')
+        ax.set_ylabel('频率 (%)', fontsize=14, fontweight='bold')
+        ax.set_title('氨基酸组成对比', fontsize=16, fontweight='bold')
+        ax.set_xticks(x)
+        ax.set_xticklabels(amino_acids)
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig(os.path.join(CHARTS_DIR, 'aa_composition.png'), 
+                   dpi=300, bbox_inches='tight', facecolor='white')
+        plt.close()
+        
+    except Exception as e:
+        print(f"Error saving AA composition chart: {e}")
+
+def save_probability_histogram(results_df):
+    """保存概率分布直方图"""
+    try:
+        probabilities = results_df['Probability'].dropna()
+        
+        if len(probabilities) > 0:
+            fig, ax = plt.subplots(figsize=(10, 6))
+            
+            ax.hist(probabilities, bins=20, alpha=0.7, color='#007bff', edgecolor='black')
+            ax.set_xlabel('预测概率', fontsize=14, fontweight='bold')
+            ax.set_ylabel('序列数量', fontsize=14, fontweight='bold')
+            ax.set_title('预测概率分布', fontsize=16, fontweight='bold')
+            ax.grid(True, alpha=0.3)
+            
+            plt.tight_layout()
+            plt.savefig(os.path.join(CHARTS_DIR, 'probability_histogram.png'), 
+                       dpi=300, bbox_inches='tight', facecolor='white')
+            plt.close()
+            
+    except Exception as e:
+        print(f"Error saving probability histogram: {e}")
+
+def save_sliding_window_chart(results_df):
+    """保存滑动窗口分析图"""
+    try:
+        # 选择一些代表性序列进行滑动窗口分析
+        positive_data = results_df[results_df['Prediction'] == 1]
+        negative_data = results_df[results_df['Prediction'] == 0]
+        
+        # 选择前几个序列作为代表
+        sample_sequences = []
+        if len(positive_data) > 0:
+            sample_sequences.extend(positive_data.head(2).to_dict('records'))
+        if len(negative_data) > 0:
+            sample_sequences.extend(negative_data.head(2).to_dict('records'))
+        
+        if len(sample_sequences) == 0:
+            print("No sequences available for sliding window analysis")
+            return
+        
+        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+        axes = axes.flatten()
+        
+        for i, seq_data in enumerate(sample_sequences[:4]):
+            if i >= 4:
+                break
+                
+            sequence = seq_data['Sequence']
+            seq_id = seq_data['ID']
+            prediction = seq_data['Prediction']
+            label = "抗菌肽" if prediction == 1 else "非抗菌肽"
+            
+            # 计算滑动窗口特征
+            window_data = calculate_sliding_window_features(sequence, window_size=3)
+            
+            if len(window_data) > 0:
+                positions = [w['position'] for w in window_data]
+                hydrophobicity = [w['hydrophobicity'] for w in window_data]
+                charge = [w['charge'] for w in window_data]
+                
+                ax = axes[i]
+                ax.plot(positions, hydrophobicity, 'b-', label='疏水性', linewidth=2)
+                ax2 = ax.twinx()
+                ax2.plot(positions, charge, 'r-', label='电荷', linewidth=2)
+                
+                ax.set_xlabel('序列位置')
+                ax.set_ylabel('疏水性', color='b')
+                ax2.set_ylabel('电荷', color='r')
+                ax.set_title(f'{seq_id} ({label})\n{sequence[:20]}...')
+                ax.grid(True, alpha=0.3)
+        
+        # 隐藏多余的子图
+        for i in range(len(sample_sequences), 4):
+            axes[i].set_visible(False)
+        
+        plt.tight_layout()
+        plt.savefig(os.path.join(CHARTS_DIR, 'sliding_window_analysis.png'), 
+                   dpi=300, bbox_inches='tight', facecolor='white')
+        plt.close()
+        
+    except Exception as e:
+        print(f"Error saving sliding window chart: {e}")
+
+def save_dimensionality_reduction_charts(results_df):
+    """保存降维可视化图 (PCA + t-SNE)"""
+    try:
+        # 获取特征数据
+        feature_columns = [col for col in results_df.columns 
+                          if col not in ['ID', 'Sequence', 'Probability', 'Prediction', 'Label']]
+        
+        if len(feature_columns) == 0:
+            print("No feature columns found for dimensionality reduction")
+            return
+        
+        # 准备数据
+        features_df = results_df[feature_columns].fillna(0)
+        labels = results_df['Prediction'].values
+        
+        if len(features_df) < 2:
+            print("Not enough samples for dimensionality reduction")
+            return
+        
+        # 标准化特征
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.decomposition import PCA
+        from sklearn.manifold import TSNE
+        
+        scaler = StandardScaler()
+        features_scaled = scaler.fit_transform(features_df)
+        
+        # 创建图形
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+        
+        # PCA
+        try:
+            n_components = min(2, features_scaled.shape[1])
+            pca = PCA(n_components=n_components)
+            pca_result = pca.fit_transform(features_scaled)
+            
+            positive_mask = labels == 1
+            negative_mask = labels == 0
+            
+            ax1.scatter(pca_result[positive_mask, 0], pca_result[positive_mask, 1], 
+                       c='#28a745', alpha=0.7, label=f'抗菌肽 (n={sum(positive_mask)})', s=50)
+            ax1.scatter(pca_result[negative_mask, 0], pca_result[negative_mask, 1], 
+                       c='#6c757d', alpha=0.7, label=f'非抗菌肽 (n={sum(negative_mask)})', s=50)
+            
+            ax1.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%} variance)')
+            ax1.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1] if n_components > 1 else 0:.1%} variance)')
+            ax1.set_title('PCA降维分析')
+            ax1.legend()
+            ax1.grid(True, alpha=0.3)
+            
+        except Exception as pca_error:
+            print(f"PCA error: {pca_error}")
+            ax1.text(0.5, 0.5, 'PCA分析失败', transform=ax1.transAxes, ha='center')
+        
+        # t-SNE
+        try:
+            if len(features_scaled) > 30:  # t-SNE需要足够的样本
+                tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(features_scaled)-1))
+                tsne_result = tsne.fit_transform(features_scaled)
+                
+                ax2.scatter(tsne_result[positive_mask, 0], tsne_result[positive_mask, 1], 
+                           c='#28a745', alpha=0.7, label=f'抗菌肽 (n={sum(positive_mask)})', s=50)
+                ax2.scatter(tsne_result[negative_mask, 0], tsne_result[negative_mask, 1], 
+                           c='#6c757d', alpha=0.7, label=f'非抗菌肽 (n={sum(negative_mask)})', s=50)
+                
+                ax2.set_xlabel('t-SNE维度1')
+                ax2.set_ylabel('t-SNE维度2')
+                ax2.set_title('t-SNE降维分析')
+                ax2.legend()
+                ax2.grid(True, alpha=0.3)
+            else:
+                ax2.text(0.5, 0.5, 't-SNE需要更多样本\n(至少30个)', transform=ax2.transAxes, ha='center')
+                ax2.set_title('t-SNE降维分析')
+            
+        except Exception as tsne_error:
+            print(f"t-SNE error: {tsne_error}")
+            ax2.text(0.5, 0.5, 't-SNE分析失败', transform=ax2.transAxes, ha='center')
+        
+        plt.tight_layout()
+        plt.savefig(os.path.join(CHARTS_DIR, 'dimensionality_reduction.png'), 
+                   dpi=300, bbox_inches='tight', facecolor='white')
+        plt.close()
+        
+    except Exception as e:
+        print(f"Error saving dimensionality reduction charts: {e}")
 
 def calculate_sliding_window_features(sequence, window_size=3):
     """计算序列滑动窗口特征"""
@@ -592,6 +1014,13 @@ def predict_sequence_api(): # Renamed to clarify it's an API endpoint
         
         # 生成降维可视化数据
         dimensionality_reduction_data = generate_dimensionality_reduction_data(results_with_features_df)
+        
+        # 保存图表到文件
+        try:
+            save_charts_to_files(results_with_features_df)
+        except Exception as chart_error:
+            print(f"Warning: Failed to save charts: {chart_error}")
+            # 不影响主要功能，只是记录警告
         
         return jsonify({
             'success': True,
