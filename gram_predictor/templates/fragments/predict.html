@@ -132,6 +132,9 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="sliding-window-tab" data-bs-toggle="tab" data-bs-target="#sliding-window-pane" type="button" role="tab">Sliding Window Analysis</button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="dimensionality-reduction-tab" data-bs-toggle="tab" data-bs-target="#dimensionality-reduction-pane" type="button" role="tab">降维可视化</button>
+                    </li>
                 </ul>
             </div>
             <div class="card-body">
@@ -159,6 +162,18 @@
                             </select>
                         </div>
                         <div style="height:400px;"><canvas id="slidingWindowChart"></canvas></div>
+                    </div>
+                    <div class="tab-pane fade" id="dimensionality-reduction-pane" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-white mb-3">PCA降维可视化</h6>
+                                <div style="height:350px;"><canvas id="pcaChart"></canvas></div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-white mb-3">t-SNE降维可视化</h6>
+                                <div style="height:350px;"><canvas id="tsneChart"></canvas></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

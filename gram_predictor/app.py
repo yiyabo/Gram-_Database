@@ -22,6 +22,8 @@ import statistics
 from Bio import SeqIO
 from peptides import Peptide 
 from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 from tensorflow.keras.preprocessing.sequence import pad_sequences #type: ignore
 from collections import Counter
 import pickle
@@ -343,6 +345,89 @@ def generate_sliding_window_data(results_with_features_df, window_size=3):
     
     return sliding_window_data
 
+def generate_dimensionality_reduction_data(results_with_features_df):
+    """生成PCA和t-SNE降维可视化数据"""
+    global global_feature_scaler_app
+    
+    # 获取数值特征列（排除ID、Sequence、Probability、Prediction、Label）
+    feature_columns = [col for col in results_with_features_df.columns
+                      if col not in ['ID', 'Sequence', 'Probability', 'Prediction', 'Label']]
+    
+    if len(feature_columns) == 0:
+        return {'pca': [], 'tsne': []}
+    
+    # 提取特征数据
+    features_data = results_with_features_df[feature_columns].values.astype(np.float32)
+    
+    # 检查样本数量
+    n_samples = features_data.shape[0]
+    if n_samples < 2:
+        return {'pca': [], 'tsne': []}
+    
+    # 标准化特征数据
+    try:
+        if global_feature_scaler_app:
+            scaled_features = global_feature_scaler_app.transform(features_data)
+        else:
+            # 如果没有预训练的scaler，使用临时scaler
+            temp_scaler = StandardScaler()
+            scaled_features = temp_scaler.fit_transform(features_data)
+    except Exception as e:
+        print(f"Error scaling features for dimensionality reduction: {e}")
+        # 使用原始特征
+        scaled_features = features_data
+    
+    dimensionality_data = {'pca': [], 'tsne': []}
+    
+    try:
+        # 执行PCA降维
+        pca = PCA(n_components=2, random_state=42)
+        pca_result = pca.fit_transform(scaled_features)
+        
+        # 格式化PCA结果
+        for i, row in results_with_features_df.iterrows():
+            dimensionality_data['pca'].append({
+                'id': row['ID'],
+                'sequence': row['Sequence'],
+                'prediction': int(row['Prediction']),
+                'probability': float(row['Probability']),
+                'label': row['Label'],
+                'x': float(pca_result[i, 0]),
+                'y': float(pca_result[i, 1])
+            })
+        
+        print(f"PCA completed: explained variance ratio = {pca.explained_variance_ratio_}")
+        
+    except Exception as e:
+        print(f"Error performing PCA: {e}")
+    
+    try:
+        # 执行t-SNE降维
+        # 动态调整perplexity以避免错误
+        perplexity = min(30, max(5, n_samples // 3))
+        tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42,
+                   n_iter=1000, learning_rate='auto')
+        tsne_result = tsne.fit_transform(scaled_features)
+        
+        # 格式化t-SNE结果
+        for i, row in results_with_features_df.iterrows():
+            dimensionality_data['tsne'].append({
+                'id': row['ID'],
+                'sequence': row['Sequence'],
+                'prediction': int(row['Prediction']),
+                'probability': float(row['Probability']),
+                'label': row['Label'],
+                'x': float(tsne_result[i, 0]),
+                'y': float(tsne_result[i, 1])
+            })
+        
+        print(f"t-SNE completed with perplexity={perplexity}")
+        
+    except Exception as e:
+        print(f"Error performing t-SNE: {e}")
+    
+    return dimensionality_data
+
 # Initialize Flask application
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
@@ -505,12 +590,16 @@ def predict_sequence_api(): # Renamed to clarify it's an API endpoint
         # 生成滑动窗口分析数据
         sliding_window_data = generate_sliding_window_data(results_with_features_df)
         
+        # 生成降维可视化数据
+        dimensionality_reduction_data = generate_dimensionality_reduction_data(results_with_features_df)
+        
         return jsonify({
             'success': True,
             'results': results_for_json,
             'stats': stats,
             'box_plot_data': box_plot_data,
-            'sliding_window_data': sliding_window_data
+            'sliding_window_data': sliding_window_data,
+            'dimensionality_reduction_data': dimensionality_reduction_data
         })
     
     except Exception as e:

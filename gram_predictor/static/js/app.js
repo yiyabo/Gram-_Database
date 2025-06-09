@@ -222,6 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderRadarChart(data.results);
             renderProbabilityHistogram(data.results);
             renderSlidingWindowChart(data.sliding_window_data);
+            renderDimensionalityReductionCharts(data.dimensionality_reduction_data);
 
             // DataTable
             if ($.fn.dataTable.isDataTable('#resultsDataTable')) {
@@ -1107,6 +1108,223 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.font = '14px Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText('滑动窗口图表渲染失败', canvas.width / 2, canvas.height / 2);
+            }
+        };
+
+        const renderDimensionalityReductionCharts = (dimensionalityData) => {
+            if (!dimensionalityData) {
+                console.warn('降维数据为空，跳过渲染');
+                return;
+            }
+
+            // 渲染PCA图表
+            renderPCAChart(dimensionalityData.pca);
+            
+            // 渲染t-SNE图表
+            renderTSNEChart(dimensionalityData.tsne);
+        };
+
+        const renderPCAChart = (pcaData) => {
+            const canvas = document.getElementById('pcaChart');
+            if (!canvas || !pcaData || pcaData.length === 0) return;
+
+            try {
+                // 分离正负样本数据
+                const positiveData = pcaData.filter(d => d.prediction === 1);
+                const negativeData = pcaData.filter(d => d.prediction === 0);
+
+                // 销毁现有图表
+                let existingChart = Chart.getChart(canvas);
+                if (existingChart) existingChart.destroy();
+
+                // 创建散点图
+                new Chart(canvas.getContext('2d'), {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: `抗菌肽 (n=${positiveData.length})`,
+                            data: positiveData.map(d => ({ x: d.x, y: d.y })),
+                            backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        }, {
+                            label: `非抗菌肽 (n=${negativeData.length})`,
+                            data: negativeData.map(d => ({ x: d.x, y: d.y })),
+                            backgroundColor: 'rgba(108, 117, 125, 0.7)',
+                            borderColor: 'rgba(108, 117, 125, 1)',
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'PCA降维分析',
+                                color: 'white',
+                                font: { size: 16 }
+                            },
+                            legend: {
+                                labels: { color: 'white' }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: function(tooltipItems) {
+                                        const dataIndex = tooltipItems[0].dataIndex;
+                                        const datasetIndex = tooltipItems[0].datasetIndex;
+                                        const data = datasetIndex === 0 ? positiveData : negativeData;
+                                        return `序列: ${data[dataIndex].id}`;
+                                    },
+                                    label: function(context) {
+                                        const dataIndex = context.dataIndex;
+                                        const datasetIndex = context.datasetIndex;
+                                        const data = datasetIndex === 0 ? positiveData : negativeData;
+                                        const sample = data[dataIndex];
+                                        return [
+                                            `预测概率: ${sample.probability.toFixed(4)}`,
+                                            `PCA坐标: (${context.parsed.x.toFixed(3)}, ${context.parsed.y.toFixed(3)})`,
+                                            `序列: ${sample.sequence.substring(0, 20)}...`
+                                        ];
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'PC1',
+                                    color: 'white'
+                                },
+                                ticks: { color: 'white' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'PC2',
+                                    color: 'white'
+                                },
+                                ticks: { color: 'white' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            }
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error('PCA图表渲染错误:', error);
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('PCA图表渲染失败', canvas.width / 2, canvas.height / 2);
+            }
+        };
+
+        const renderTSNEChart = (tsneData) => {
+            const canvas = document.getElementById('tsneChart');
+            if (!canvas || !tsneData || tsneData.length === 0) return;
+
+            try {
+                // 分离正负样本数据
+                const positiveData = tsneData.filter(d => d.prediction === 1);
+                const negativeData = tsneData.filter(d => d.prediction === 0);
+
+                // 销毁现有图表
+                let existingChart = Chart.getChart(canvas);
+                if (existingChart) existingChart.destroy();
+
+                // 创建散点图
+                new Chart(canvas.getContext('2d'), {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: `抗菌肽 (n=${positiveData.length})`,
+                            data: positiveData.map(d => ({ x: d.x, y: d.y })),
+                            backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        }, {
+                            label: `非抗菌肽 (n=${negativeData.length})`,
+                            data: negativeData.map(d => ({ x: d.x, y: d.y })),
+                            backgroundColor: 'rgba(108, 117, 125, 0.7)',
+                            borderColor: 'rgba(108, 117, 125, 1)',
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 't-SNE降维分析',
+                                color: 'white',
+                                font: { size: 16 }
+                            },
+                            legend: {
+                                labels: { color: 'white' }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: function(tooltipItems) {
+                                        const dataIndex = tooltipItems[0].dataIndex;
+                                        const datasetIndex = tooltipItems[0].datasetIndex;
+                                        const data = datasetIndex === 0 ? positiveData : negativeData;
+                                        return `序列: ${data[dataIndex].id}`;
+                                    },
+                                    label: function(context) {
+                                        const dataIndex = context.dataIndex;
+                                        const datasetIndex = context.datasetIndex;
+                                        const data = datasetIndex === 0 ? positiveData : negativeData;
+                                        const sample = data[dataIndex];
+                                        return [
+                                            `预测概率: ${sample.probability.toFixed(4)}`,
+                                            `t-SNE坐标: (${context.parsed.x.toFixed(3)}, ${context.parsed.y.toFixed(3)})`,
+                                            `序列: ${sample.sequence.substring(0, 20)}...`
+                                        ];
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 't-SNE维度1',
+                                    color: 'white'
+                                },
+                                ticks: { color: 'white' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 't-SNE维度2',
+                                    color: 'white'
+                                },
+                                ticks: { color: 'white' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            }
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error('t-SNE图表渲染错误:', error);
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('t-SNE图表渲染失败', canvas.width / 2, canvas.height / 2);
             }
         };
     };
