@@ -879,17 +879,114 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
+        // 存储滑动窗口数据以便下拉菜单使用
+        let currentSlidingWindowData = null;
+
         const renderSlidingWindowChart = (slidingWindowData) => {
             const canvas = document.getElementById('slidingWindowChart');
+            const sequenceSelector = document.getElementById('sequenceSelector');
+            
             if (!canvas || !slidingWindowData) return;
 
+            // 存储数据
+            currentSlidingWindowData = slidingWindowData;
+
             try {
-                // 准备数据：选择第一个正样本和第一个负样本进行展示
-                const positiveSample = slidingWindowData.positive_samples[0];
-                const negativeSample = slidingWindowData.negative_samples[0];
-                
-                if (!positiveSample && !negativeSample) {
-                    console.warn('No sliding window data available');
+                // 初始化下拉菜单
+                initializeSequenceSelector(slidingWindowData);
+
+                // 如果没有选中的序列，显示默认的第一个正样本和负样本
+                renderSelectedSequenceChart();
+
+            } catch (error) {
+                console.error('滑动窗口图表初始化错误:', error);
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'white';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('滑动窗口图表初始化失败', canvas.width / 2, canvas.height / 2);
+            }
+        };
+
+        const initializeSequenceSelector = (slidingWindowData) => {
+            const sequenceSelector = document.getElementById('sequenceSelector');
+            if (!sequenceSelector) return;
+
+            // 清空现有选项
+            sequenceSelector.innerHTML = '<option value="">请选择一个序列...</option>';
+
+            // 添加正样本选项
+            if (slidingWindowData.positive_samples && slidingWindowData.positive_samples.length > 0) {
+                const positiveGroup = document.createElement('optgroup');
+                positiveGroup.label = '正样本 (预测为抗菌肽)';
+                slidingWindowData.positive_samples.forEach((sample, index) => {
+                    const option = document.createElement('option');
+                    option.value = `positive_${index}`;
+                    option.textContent = `${sample.id}: ${sample.sequence.substring(0, 15)}... (正样本)`;
+                    positiveGroup.appendChild(option);
+                });
+                sequenceSelector.appendChild(positiveGroup);
+            }
+
+            // 添加负样本选项
+            if (slidingWindowData.negative_samples && slidingWindowData.negative_samples.length > 0) {
+                const negativeGroup = document.createElement('optgroup');
+                negativeGroup.label = '负样本 (预测为非抗菌肽)';
+                slidingWindowData.negative_samples.forEach((sample, index) => {
+                    const option = document.createElement('option');
+                    option.value = `negative_${index}`;
+                    option.textContent = `${sample.id}: ${sample.sequence.substring(0, 15)}... (负样本)`;
+                    negativeGroup.appendChild(option);
+                });
+                sequenceSelector.appendChild(negativeGroup);
+            }
+
+            // 默认选择第一个正样本（如果存在）
+            if (slidingWindowData.positive_samples && slidingWindowData.positive_samples.length > 0) {
+                sequenceSelector.value = 'positive_0';
+            } else if (slidingWindowData.negative_samples && slidingWindowData.negative_samples.length > 0) {
+                sequenceSelector.value = 'negative_0';
+            }
+
+            // 添加事件监听器
+            sequenceSelector.removeEventListener('change', handleSequenceSelection);
+            sequenceSelector.addEventListener('change', handleSequenceSelection);
+        };
+
+        const handleSequenceSelection = () => {
+            renderSelectedSequenceChart();
+        };
+
+        const renderSelectedSequenceChart = () => {
+            const canvas = document.getElementById('slidingWindowChart');
+            const sequenceSelector = document.getElementById('sequenceSelector');
+            
+            if (!canvas || !currentSlidingWindowData || !sequenceSelector) return;
+
+            try {
+                const selectedValue = sequenceSelector.value;
+                let selectedSample = null;
+                let sampleType = '';
+
+                if (selectedValue.startsWith('positive_')) {
+                    const index = parseInt(selectedValue.replace('positive_', ''));
+                    selectedSample = currentSlidingWindowData.positive_samples[index];
+                    sampleType = '正样本';
+                } else if (selectedValue.startsWith('negative_')) {
+                    const index = parseInt(selectedValue.replace('negative_', ''));
+                    selectedSample = currentSlidingWindowData.negative_samples[index];
+                    sampleType = '负样本';
+                }
+
+                if (!selectedSample) {
+                    // 如果没有选择，显示提示信息
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = 'white';
+                    ctx.font = '16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('请从下拉菜单中选择一个序列', canvas.width / 2, canvas.height / 2);
                     return;
                 }
 
@@ -909,10 +1006,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 为每个特征创建数据集
                 features.forEach((feature, index) => {
-                    if (positiveSample && positiveSample.windows.length > 0) {
+                    if (selectedSample && selectedSample.windows.length > 0) {
                         datasets.push({
-                            label: `${featureNames[feature]} (正样本)`,
-                            data: positiveSample.windows.map(window => ({
+                            label: `${featureNames[feature]}`,
+                            data: selectedSample.windows.map(window => ({
                                 x: window.position,
                                 y: window[feature]
                             })),
@@ -921,23 +1018,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             borderWidth: 2,
                             pointRadius: 4,
                             tension: 0.3,
-                            yAxisID: 'y'
-                        });
-                    }
-
-                    if (negativeSample && negativeSample.windows.length > 0) {
-                        datasets.push({
-                            label: `${featureNames[feature]} (负样本)`,
-                            data: negativeSample.windows.map(window => ({
-                                x: window.position,
-                                y: window[feature]
-                            })),
-                            borderColor: colors[feature],
-                            backgroundColor: colors[feature],
-                            borderWidth: 2,
-                            pointRadius: 3,
-                            tension: 0.3,
-                            borderDash: [5, 5],
                             yAxisID: 'y'
                         });
                     }
@@ -961,6 +1041,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             intersect: false,
                         },
                         plugins: {
+                            title: {
+                                display: true,
+                                text: `${selectedSample.id} (${sampleType}) - 序列: ${selectedSample.sequence}`,
+                                color: 'white',
+                                font: {
+                                    size: 14
+                                }
+                            },
                             legend: {
                                 labels: { color: 'white' }
                             },
