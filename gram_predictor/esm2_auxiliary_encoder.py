@@ -105,8 +105,68 @@ class ESM2AuxiliaryEncoder(nn.Module):
         
         # 加载ESM-2预训练模型
         try:
-            self.tokenizer = EsmTokenizer.from_pretrained(self.config.model_name)
-            self.esm_model = EsmModel.from_pretrained(self.config.model_name)
+            # 首先尝试从本地缓存加载
+            try:
+                logger.info("尝试从本地缓存加载ESM-2模型...")
+                self.tokenizer = EsmTokenizer.from_pretrained(
+                    self.config.model_name, 
+                    local_files_only=True
+                )
+                self.esm_model = EsmModel.from_pretrained(
+                    self.config.model_name, 
+                    local_files_only=True
+                )
+                logger.info("✅ 从本地缓存加载ESM-2模型成功")
+                
+            except Exception as cache_error:
+                logger.warning(f"本地缓存加载失败: {str(cache_error)[:100]}...")
+                logger.info("尝试在线下载模型...")
+                
+                # 设置环境变量优化下载
+                import os
+                import requests
+                
+                # 检查代理连接
+                proxy_working = False
+                if 'http_proxy' in os.environ or 'https_proxy' in os.environ:
+                    try:
+                        # 测试代理连接
+                        proxy_url = os.environ.get('https_proxy', os.environ.get('http_proxy'))
+                        logger.info(f"检测到代理设置: {proxy_url}")
+                        
+                        # 简单测试代理是否可用
+                        test_response = requests.get('https://httpbin.org/ip', 
+                                                   proxies={'https': proxy_url, 'http': proxy_url}, 
+                                                   timeout=5)
+                        if test_response.status_code == 200:
+                            proxy_working = True
+                            logger.info("✅ 代理连接正常")
+                        else:
+                            logger.warning("⚠️  代理连接异常")
+                    except Exception as proxy_error:
+                        logger.warning(f"⚠️  代理测试失败: {str(proxy_error)[:50]}...")
+                        logger.info("尝试禁用代理进行下载...")
+                        # 临时禁用代理
+                        for proxy_var in ['http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY']:
+                            if proxy_var in os.environ:
+                                os.environ[f'_BACKUP_{proxy_var}'] = os.environ[proxy_var]
+                                del os.environ[proxy_var]
+                
+                os.environ['HF_HUB_DISABLE_PROGRESS_BARS'] = '1'
+                os.environ['TRANSFORMERS_OFFLINE'] = '0'
+                
+                # 尝试在线下载
+                self.tokenizer = EsmTokenizer.from_pretrained(
+                    self.config.model_name,
+                    trust_remote_code=True,
+                    resume_download=True
+                )
+                self.esm_model = EsmModel.from_pretrained(
+                    self.config.model_name,
+                    trust_remote_code=True,
+                    resume_download=True
+                )
+                logger.info("✅ 在线下载ESM-2模型成功")
             
             if self.config.freeze_esm:
                 # 冻结预训练权重
@@ -117,6 +177,7 @@ class ESM2AuxiliaryEncoder(nn.Module):
         except Exception as e:
             logger.error(f"加载ESM-2模型失败: {e}")
             logger.error("请确保已安装transformers库: pip install transformers")
+            logger.error("如果网络连接有问题，请配置代理或使用离线模式")
             raise
         
         # 获取ESM-2输出维度

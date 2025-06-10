@@ -38,6 +38,16 @@ from generation_service import get_generation_service
 
 print("!!!!!!!!!! DEBUG: app.py IS LOADING FRESHLY (Hybrid Model Version) !!!!!!!!!!")
 
+# 处理代理设置问题
+import os
+proxy_backup = {}
+for proxy_var in ['http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY']:
+    if proxy_var in os.environ:
+        proxy_backup[proxy_var] = os.environ[proxy_var]
+        # 临时禁用代理以避免Hugging Face连接问题
+        del os.environ[proxy_var]
+        print(f"临时禁用代理: {proxy_var}")
+
 # 创建图表保存目录
 CHARTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'charts')
 os.makedirs(CHARTS_DIR, exist_ok=True)
@@ -875,12 +885,15 @@ def load_app_dependencies():
 
 @app.before_request
 def before_first_request_func():
-    if keras_model_global is None or global_feature_scaler_app is None:
-        load_app_dependencies()
+    # Only load models for prediction endpoints, not for database endpoint
+    if request.endpoint in ['predict_sequence_api', 'generate_sequences_route']:
+        if keras_model_global is None or global_feature_scaler_app is None:
+            load_app_dependencies()
 
 @app.route('/')
 @app.route('/predict')
 @app.route('/generate')
+@app.route('/database')
 @app.route('/about')
 def index():
     """Serves the main layout, letting the frontend handle routing."""
@@ -897,6 +910,11 @@ def content_predict():
 def content_generate():
     """Serves the content for the generation page."""
     return render_template('fragments/generate.html')
+
+@app.route('/content/database')
+def content_database():
+    """Serves the content for the database page."""
+    return render_template('fragments/database.html')
 
 @app.route('/content/about')
 def content_about():
@@ -1102,6 +1120,21 @@ def generate_sequences_route():
         # Get generation service
         gen_service = get_generation_service()
         
+        # Load models if not already loaded
+        if not gen_service.is_loaded:
+            try:
+                success = gen_service.load_models()
+                if not success:
+                    return jsonify({
+                        'success': False,
+                        'error': 'Failed to load generation models. Please check the model files and network connectivity.'
+                    }), 503
+            except Exception as load_error:
+                return jsonify({
+                    'success': False,
+                    'error': f'Model loading error: {str(load_error)}'
+                }), 503
+        
         # Parse request parameters
         data = request.json
         num_sequences = int(data.get('num_sequences', 5))
@@ -1152,6 +1185,62 @@ def generate_sequences_route():
         print(f"Error during sequence generation: {str(e)}")
         traceback.print_exc()
         return jsonify({'error': f'Internal server error during sequence generation: {str(e)}'}), 500
+
+@app.route('/api/database')
+def get_database():
+    """Get database sequences from Gram+-.fasta file."""
+    print("DEBUG: /api/database endpoint called")
+    try:
+        # 构建FASTA文件路径
+        fasta_path = os.path.join(PROJECT_ROOT_DIR, 'data', 'Gram+-.fasta')
+        
+        if not os.path.exists(fasta_path):
+            return jsonify({
+                'success': False,
+                'error': f'Database file not found: {fasta_path}'
+            }), 404
+        
+        sequences = []
+        total_length = 0
+        
+        # 读取FASTA文件
+        for record in SeqIO.parse(fasta_path, "fasta"):
+            sequence_str = str(record.seq).upper()
+            sequence_length = len(sequence_str)
+            
+            sequences.append({
+                'id': record.id,
+                'sequence': sequence_str,
+                'length': sequence_length,
+                'description': record.description
+            })
+            total_length += sequence_length
+        
+        # 计算统计信息
+        stats = {
+            'total': len(sequences),
+            'avg_length': total_length / len(sequences) if sequences else 0,
+            'min_length': min(seq['length'] for seq in sequences) if sequences else 0,
+            'max_length': max(seq['length'] for seq in sequences) if sequences else 0
+        }
+        
+        return jsonify({
+            'success': True,
+            'sequences': sequences,
+            'stats': stats,
+            'file_info': {
+                'path': fasta_path,
+                'description': 'Antimicrobial peptide sequences with activity against Gram-negative bacteria'
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error loading database: {str(e)}")
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': f'Error loading database: {str(e)}'
+        }), 500
 
 @app.route('/model_status')
 def model_status():

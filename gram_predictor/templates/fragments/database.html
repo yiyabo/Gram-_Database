@@ -1,0 +1,119 @@
+<!-- Database Page Content -->
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-dark text-light border-secondary">
+                <div class="card-header">
+                    <h2 class="mb-0">
+                        <i class="bi bi-database me-2"></i>Gram-Negative Bacteria Database
+                        <small class="text-muted ms-2">Antimicrobial Peptide Sequences</small>
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <h5>Database Description</h5>
+                            <p class="lead">
+                                This database contains peptide sequences with antimicrobial activity against Gram-negative bacteria.
+                                These sequences are valuable for antimicrobial peptide research and can be used for designing and analyzing
+                                broad-spectrum antimicrobial peptides.
+                            </p>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-secondary">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Database Statistics</h6>
+                                    <div id="database-stats">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <h4 id="total-sequences">-</h4>
+                                                <small>Total Sequences</small>
+                                            </div>
+                                            <div class="col-6">
+                                                <h4 id="avg-length">-</h4>
+                                                <small>Average Length</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Search Controls -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" id="sequenceSearch" placeholder="Search sequences or IDs...">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <button class="btn btn-outline-light" id="clearSearch">
+                                <i class="bi bi-x-circle"></i> Clear Search
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-primary" id="downloadFasta">
+                                    <i class="bi bi-download"></i> Download FASTA
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Loading Indicator -->
+                    <div id="database-loading" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading database...</p>
+                    </div>
+
+                    <!-- Error Message -->
+                    <div id="database-error" class="alert alert-danger" style="display: none;">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <span id="database-error-message">Error loading database</span>
+                    </div>
+
+                    <!-- Database Table -->
+                    <div id="database-table-container" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="table table-dark table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 120px;">ID</th>
+                                        <th>Sequence</th>
+                                        <th style="width: 100px;">Length</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sequence-table-body">
+                                    <!-- Sequences will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <div>
+                                <span id="pagination-info">Showing 0 of 0 sequences</span>
+                            </div>
+                            <div>
+                                <button class="btn btn-outline-light btn-sm" id="prevPage" disabled>Previous</button>
+                                <span class="mx-2" id="page-info">Page 1</span>
+                                <button class="btn btn-outline-light btn-sm" id="nextPage">Next</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Database functionality is now handled in app.js -->

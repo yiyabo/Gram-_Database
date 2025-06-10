@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
         '/': '/content/predict',
         '/predict': '/content/predict',
         '/generate': '/content/generate',
+        '/database': '/content/database',
         '/about': '/content/about'
     };
 
@@ -37,6 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
             initPredictPage();
         } else if (path === '/generate') {
             initGeneratePage();
+        } else if (path === '/database') {
+            initDatabasePage();
         }
         // Initialize common elements like toasts or particles if needed
         initParticles();
@@ -1767,4 +1770,231 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('Failed to copy.', 'danger');
             });
         });
+    };
+
+    // --- DATABASE PAGE LOGIC ---
+    const initDatabasePage = () => {
+        console.log('Database page initialized');
+        
+        // Initialize database functionality
+        let allSequences = [];
+        let filteredSequences = [];
+        let currentPage = 1;
+        const sequencesPerPage = 25;
+
+        // Show toast message function
+        function showToast(message, type = 'info') {
+            if (window.showToast) {
+                window.showToast(message, type);
+            } else {
+                console.log(`${type.toUpperCase()}: ${message}`);
+                alert(message);
+            }
+        }
+
+        // Load database data
+        async function loadDatabase() {
+            console.log('Starting loadDatabase function...');
+            
+            // Show loading
+            const loadingEl = document.getElementById('database-loading');
+            const errorEl = document.getElementById('database-error');
+            const tableEl = document.getElementById('database-table-container');
+            
+            console.log('DOM elements check:');
+            console.log('- database-loading:', loadingEl);
+            console.log('- database-error:', errorEl);
+            console.log('- database-table-container:', tableEl);
+            
+            if (loadingEl) loadingEl.style.display = 'block';
+            if (errorEl) errorEl.style.display = 'none';
+            if (tableEl) tableEl.style.display = 'none';
+            
+            try {
+                console.log('Fetching /api/database...');
+                const response = await fetch('/api/database');
+                console.log('Response status:', response.status);
+                
+                const data = await response.json();
+                console.log('Response data keys:', Object.keys(data));
+                console.log('Number of sequences:', data.sequences ? data.sequences.length : 0);
+                
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Failed to load database');
+                }
+
+                allSequences = data.sequences;
+                filteredSequences = [...allSequences];
+                console.log(`Successfully loaded ${allSequences.length} sequences`);
+                
+                updateStats(data.stats);
+                renderTable();
+                
+                console.log('Hiding loading, showing table...');
+                if (loadingEl) loadingEl.style.display = 'none';
+                if (tableEl) tableEl.style.display = 'block';
+
+            } catch (error) {
+                console.error('Database loading error:', error);
+                const errorMsgEl = document.getElementById('database-error-message');
+                if (errorMsgEl) errorMsgEl.textContent = error.message;
+                if (errorEl) errorEl.style.display = 'block';
+                if (loadingEl) loadingEl.style.display = 'none';
+            }
+        }
+
+        // Update statistics
+        function updateStats(stats) {
+            const totalEl = document.getElementById('total-sequences');
+            const avgEl = document.getElementById('avg-length');
+            if (totalEl) totalEl.textContent = stats.total;
+            if (avgEl) avgEl.textContent = stats.avg_length.toFixed(1);
+        }
+
+        // Render table
+        function renderTable() {
+            const startIndex = (currentPage - 1) * sequencesPerPage;
+            const endIndex = startIndex + sequencesPerPage;
+            const pageSequences = filteredSequences.slice(startIndex, endIndex);
+            
+            const tbody = document.getElementById('sequence-table-body');
+            if (!tbody) {
+                console.error('Table body not found');
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            
+            pageSequences.forEach(seq => {
+                const row = document.createElement('tr');
+                const truncatedSeq = seq.sequence.length > 50 ? 
+                    seq.sequence.substring(0, 50) + '...' : seq.sequence;
+                
+                row.innerHTML = `
+                    <td>${seq.id}</td>
+                    <td><code class="text-light">${truncatedSeq}</code></td>
+                    <td>${seq.length}</td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            updatePagination();
+        }
+
+        // Update pagination
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredSequences.length / sequencesPerPage);
+            const startIndex = (currentPage - 1) * sequencesPerPage + 1;
+            const endIndex = Math.min(currentPage * sequencesPerPage, filteredSequences.length);
+            
+            const paginationInfo = document.getElementById('pagination-info');
+            const pageInfo = document.getElementById('page-info');
+            
+            if (paginationInfo) {
+                paginationInfo.textContent = `Showing ${startIndex}-${endIndex} of ${filteredSequences.length} sequences`;
+            }
+            if (pageInfo) {
+                pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+            }
+            
+            const prevBtn = document.getElementById('prevPage');
+            const nextBtn = document.getElementById('nextPage');
+            
+            if (prevBtn) prevBtn.disabled = currentPage === 1;
+            if (nextBtn) nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+        }
+
+        // Add event listeners for pagination and other controls
+        function setupEventListeners() {
+            // Search functionality
+            const searchInput = document.getElementById('sequenceSearch');
+            if (searchInput) {
+                searchInput.addEventListener('input', performSearch);
+            }
+            
+            const clearSearchBtn = document.getElementById('clearSearch');
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', function() {
+                    const searchInput = document.getElementById('sequenceSearch');
+                    if (searchInput) {
+                        searchInput.value = '';
+                        performSearch();
+                    }
+                });
+            }
+
+
+            // Pagination buttons
+            const prevBtn = document.getElementById('prevPage');
+            if (prevBtn) {
+                prevBtn.addEventListener('click', function() {
+                    console.log('Previous page clicked, current page:', currentPage);
+                    if (currentPage > 1) {
+                        currentPage--;
+                        renderTable();
+                    }
+                });
+            }
+
+            const nextBtn = document.getElementById('nextPage');
+            if (nextBtn) {
+                nextBtn.addEventListener('click', function() {
+                    const totalPages = Math.ceil(filteredSequences.length / sequencesPerPage);
+                    console.log('Next page clicked, current page:', currentPage, 'total pages:', totalPages);
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        renderTable();
+                    }
+                });
+            }
+
+            // Download FASTA
+            const downloadBtn = document.getElementById('downloadFasta');
+            if (downloadBtn) {
+                downloadBtn.addEventListener('click', function() {
+                    const fastaContent = allSequences.map(seq => `>${seq.id}\n${seq.sequence}`).join('\n');
+                    downloadFile(fastaContent, 'gram_negative_database.fasta', 'text/plain');
+                });
+            }
+
+        }
+
+        // Search functionality
+        function performSearch() {
+            const searchInput = document.getElementById('sequenceSearch');
+            if (!searchInput) return;
+            
+            const searchTerm = searchInput.value.toLowerCase();
+            if (searchTerm === '') {
+                filteredSequences = [...allSequences];
+            } else {
+                filteredSequences = allSequences.filter(seq => 
+                    seq.id.toLowerCase().includes(searchTerm) || 
+                    seq.sequence.toLowerCase().includes(searchTerm)
+                );
+            }
+            currentPage = 1;
+            renderTable();
+        }
+
+        // Helper function to download file
+        function downloadFile(content, filename, contentType) {
+            const blob = new Blob([content], { type: contentType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+
+        // Initialize database loading
+        setTimeout(() => {
+            console.log('Initializing database loading...');
+            loadDatabase();
+            // Setup event listeners after a short delay to ensure DOM is ready
+            setTimeout(setupEventListeners, 200);
+        }, 100);
     };
