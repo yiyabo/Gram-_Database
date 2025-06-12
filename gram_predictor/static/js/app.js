@@ -374,12 +374,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 主要特征和中文标签
                 const mainFeatures = ['Charge', 'Hydrophobicity', 'Hydrophobic_Moment', 'Instability_Index', 'Isoelectric_Point', 'Aliphatic_Index'];
                 const featureLabels = {
-                    'Charge': '电荷',
-                    'Hydrophobicity': '疏水性',
-                    'Hydrophobic_Moment': '疏水力矩',
-                    'Instability_Index': '不稳定指数',
-                    'Isoelectric_Point': '等电点',
-                    'Aliphatic_Index': '脂肪族指数'
+                    'Charge': 'Charge',
+                    'Hydrophobicity': 'Hydrophobicity',
+                    'Hydrophobic_Moment': 'Hydrophobic Moment',
+                    'Instability_Index': 'Instability Index',
+                    'Isoelectric_Point': 'Isoelectric Point',
+                    'Aliphatic_Index': 'Aliphatic Index'
                 };
 
                 // 计算每个特征的平均值和标准差
@@ -488,7 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: `抗菌肽 (n=${positiveData.length})`,
+                            label: `Anti-Gram-negative (n=${positiveData.length})`,
                             data: positiveMeans,
                             backgroundColor: positiveGradient,
                             borderColor: 'rgba(40, 167, 69, 1)',
@@ -498,7 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 '-': positiveStds
                             }
                         }, {
-                            label: `非抗菌肽 (n=${negativeData.length})`,
+                            label: `Non-Anti-Gram-negative (n=${negativeData.length})`,
                             data: negativeMeans,
                             backgroundColor: negativeGradient,
                             borderColor: 'rgba(108, 117, 125, 1)',
@@ -519,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         plugins: {
                             title: {
                                 display: true,
-                                text: '特征对比分析 (Z-score标准化)',
+                                text: 'Feature Comparison Analysis (Z-score Normalized)',
                                 color: 'white',
                                 font: {
                                     size: 18,
@@ -562,20 +562,20 @@ document.addEventListener('DOMContentLoaded', () => {
                                         // 效应量解释
                                         let effectText = '';
                                         const absEffect = Math.abs(cohensD);
-                                        if (absEffect < 0.2) effectText = '(差异很小)';
-                                        else if (absEffect < 0.5) effectText = '(差异较小)';
-                                        else if (absEffect < 0.8) effectText = '(差异中等)';
-                                        else effectText = '(差异很大)';
+                                        if (absEffect < 0.2) effectText = '(very small difference)';
+                                        else if (absEffect < 0.5) effectText = '(small difference)';
+                                        else if (absEffect < 0.8) effectText = '(medium difference)';
+                                        else effectText = '(large difference)';
                                         
                                         return [
                                             `${context.dataset.label}`,
-                                            `标准化值: ${normalizedMean.toFixed(3)}`,
-                                            `原始均值: ${originalMean.toFixed(3)}`,
-                                            `效应量: ${cohensD.toFixed(3)} ${effectText}`
+                                            `Normalized value: ${normalizedMean.toFixed(3)}`,
+                                            `Original mean: ${originalMean.toFixed(3)}`,
+                                            `Effect size: ${cohensD.toFixed(3)} ${effectText}`
                                         ];
                                     },
                                     title: function(tooltipItems) {
-                                        return `特征: ${tooltipItems[0].label}`;
+                                        return `Feature: ${tooltipItems[0].label}`;
                                     }
                                 }
                             }
@@ -584,7 +584,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             y: {
                                 title: {
                                     display: true,
-                                    text: 'Z-score标准化值',
+                                    text: 'Z-score Normalized Value',
                                     color: 'white',
                                     font: {
                                         size: 14,
@@ -608,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             x: {
                                 title: {
                                     display: true,
-                                    text: '特征类型',
+                                    text: 'Feature Type',
                                     color: 'white',
                                     font: {
                                         size: 14,
@@ -655,19 +655,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         .sort((a, b) => Math.abs(b.cohensD) - Math.abs(a.cohensD));
                     
                     if (significantFeatures.length > 0) {
-                        console.log('具有显著效应量的特征 (Cohen\'s d > 0.2):', significantFeatures);
-                        console.log('效应量解释: <0.2=很小, 0.2-0.5=较小, 0.5-0.8=中等, >0.8=很大');
+                        console.log('Features with significant effect size (Cohen\'s d > 0.2):', significantFeatures);
+                        console.log('Effect size interpretation: <0.2=very small, 0.2-0.5=small, 0.5-0.8=medium, >0.8=large');
                     }
                 }, 1000);
 
             } catch (error) {
-                console.error('特征对比图渲染错误:', error);
+                console.error('Feature comparison chart rendering error:', error);
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = 'white';
                 ctx.font = '16px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('特征对比图渲染失败', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('Feature comparison chart rendering failed', canvas.width / 2, canvas.height / 2);
             }
         };
 
@@ -676,13 +676,13 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const mainFeatures = ['Length', 'Charge', 'Hydrophobicity', 'Hydrophobic_Moment', 'Instability_Index', 'Isoelectric_Point', 'Aliphatic_Index'];
                 const featureLabels = {
-                    'Length': '序列长度',
-                    'Charge': '电荷', 
-                    'Hydrophobicity': '疏水性',
-                    'Hydrophobic_Moment': '疏水力矩',
-                    'Instability_Index': '不稳定指数',
-                    'Isoelectric_Point': '等电点',
-                    'Aliphatic_Index': '脂肪族指数'
+                    'Length': 'Sequence Length',
+                    'Charge': 'Charge', 
+                    'Hydrophobicity': 'Hydrophobicity',
+                    'Hydrophobic_Moment': 'Hydrophobic Moment',
+                    'Instability_Index': 'Instability Index',
+                    'Isoelectric_Point': 'Isoelectric Point',
+                    'Aliphatic_Index': 'Aliphatic Index'
                 };
                 
                 const filteredData = boxPlotData.filter(item => mainFeatures.includes(item.feature));
@@ -702,13 +702,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: '中位数',
+                            label: 'Median',
                             data: medianData,
                             backgroundColor: 'rgba(54, 162, 235, 0.7)',
                             borderColor: 'rgba(54, 162, 235, 1)',
                             borderWidth: 1
                         }, {
-                            label: 'Q1-Q3范围',
+                            label: 'Q1-Q3 Range',
                             data: q3Data.map((q3, i) => q3 - q1Data[i]),
                             backgroundColor: 'rgba(255, 206, 86, 0.5)',
                             borderColor: 'rgba(255, 206, 86, 1)',
@@ -721,7 +721,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         plugins: {
                             title: {
                                 display: true,
-                                text: '特征值分布（替代显示）',
+                                text: 'Feature Value Distribution (Alternative View)',
                                 color: 'white',
                                 font: { size: 16 }
                             },
@@ -731,7 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         },
                         scales: {
                             y: {
-                                title: { display: true, text: '特征值', color: 'white' },
+                                title: { display: true, text: 'Feature Value', color: 'white' },
                                 ticks: { color: 'white' },
                                 grid: { color: 'rgba(255,255,255,0.1)' }
                             },
@@ -743,13 +743,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             } catch (error) {
-                console.error('替代图表渲染失败:', error);
+                console.error('Alternative chart rendering failed:', error);
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = 'white';
                 ctx.font = '14px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('特征分布图渲染失败', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('Feature distribution chart rendering failed', canvas.width / 2, canvas.height / 2);
             }
         };
 
@@ -786,14 +786,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     labels: features,
                     datasets: [
                         {
-                            label: 'Positive',
+                            label: 'Anti-Gram-negative',
                             data: positiveAvgs,
                             backgroundColor: 'rgba(40, 167, 69, 0.7)',
                             borderColor: 'rgba(40, 167, 69, 1)',
                             borderWidth: 1
                         },
                         {
-                            label: 'Negative',
+                            label: 'Non-Anti-Gram-negative',
                             data: negativeAvgs,
                             backgroundColor: 'rgba(108, 117, 125, 0.7)',
                             borderColor: 'rgba(108, 117, 125, 1)',
@@ -859,11 +859,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 type: 'scatter',
                 data: {
                     datasets: [{
-                        label: 'Positive',
+                        label: 'Anti-Gram-negative',
                         data: positiveData,
                         backgroundColor: 'rgba(40, 167, 69, 0.7)'
                     }, {
-                        label: 'Negative',
+                        label: 'Non-Anti-Gram-negative',
                         data: negativeData,
                         backgroundColor: 'rgba(108, 117, 125, 0.7)'
                     }]
@@ -922,11 +922,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 data: {
                     labels: aminoAcids,
                     datasets: [{
-                        label: 'Positive Freq (%)',
+                        label: 'Anti-Gram-negative Freq (%)',
                         data: positiveFreqs,
                         backgroundColor: 'rgba(40, 167, 69, 0.7)',
                     }, {
-                        label: 'Negative Freq (%)',
+                        label: 'Non-Anti-Gram-negative Freq (%)',
                         data: negativeFreqs,
                         backgroundColor: 'rgba(108, 117, 125, 0.7)',
                     }]
@@ -975,7 +975,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 );
 
                 if (!isValidArray(posAvgs) || !isValidArray(negAvgs)) {
-                    console.warn('雷达图：检测到无效数据值，跳过渲染');
+                    console.warn('Radar chart: Invalid data values detected, skipping rendering');
                     return;
                 }
 
@@ -1032,7 +1032,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 最终验证标准化数据
                 if (!isValidArray(normalizedPosData) || !isValidArray(normalizedNegData)) {
-                    console.warn('雷达图：标准化后数据无效，跳过渲染');
+                    console.warn('Radar chart: Normalized data invalid, skipping rendering');
                     return;
                 }
 
@@ -1044,7 +1044,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     data: {
                         labels: features,
                         datasets: [{
-                            label: `Positive (n=${positiveData.length})`,
+                            label: `Anti-Gram-negative (n=${positiveData.length})`,
                             data: normalizedPosData,
                             backgroundColor: 'rgba(40, 167, 69, 0.3)',
                             borderColor: 'rgba(40, 167, 69, 1)',
@@ -1053,7 +1053,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             pointRadius: 5,
                             pointHoverRadius: 7
                         }, {
-                            label: `Negative (n=${negativeData.length})`,
+                            label: `Non-Anti-Gram-negative (n=${negativeData.length})`,
                             data: normalizedNegData,
                             backgroundColor: 'rgba(108, 117, 125, 0.3)',
                             borderColor: 'rgba(108, 117, 125, 1)',
@@ -1078,10 +1078,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                         const originalValue = isPositive ? posAvgs[featureIndex] : negAvgs[featureIndex];
                                         const normalizedValue = context.parsed.r;
                                         
-                                        return `${context.dataset.label}: ${originalValue.toFixed(3)} (标准化: ${normalizedValue.toFixed(3)})`;
+                                        return `${context.dataset.label}: ${originalValue.toFixed(3)} (normalized: ${normalizedValue.toFixed(3)})`;
                                     },
                                     title: function(tooltipItems) {
-                                        return `特征: ${tooltipItems[0].label}`;
+                                        return `Feature: ${tooltipItems[0].label}`;
                                     }
                                 }
                             }
@@ -1108,14 +1108,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
             } catch (error) {
-                console.error('雷达图渲染错误:', error);
+                console.error('Radar chart rendering error:', error);
                 // 如果出现错误，在canvas上显示错误信息
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = 'white';
                 ctx.font = '16px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('雷达图渲染失败', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('Radar chart rendering failed', canvas.width / 2, canvas.height / 2);
             }
         };
 
@@ -1178,13 +1178,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderSelectedSequenceChart();
 
             } catch (error) {
-                console.error('滑动窗口图表初始化错误:', error);
+                console.error('Sliding window chart initialization error:', error);
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = 'white';
                 ctx.font = '14px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('滑动窗口图表初始化失败', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('Sliding window chart initialization failed', canvas.width / 2, canvas.height / 2);
             }
         };
 
@@ -1193,16 +1193,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!sequenceSelector) return;
 
             // 清空现有选项
-            sequenceSelector.innerHTML = '<option value="">请选择一个序列...</option>';
+            sequenceSelector.innerHTML = '<option value="">Please select a sequence...</option>';
 
             // 添加正样本选项
             if (slidingWindowData.positive_samples && slidingWindowData.positive_samples.length > 0) {
                 const positiveGroup = document.createElement('optgroup');
-                positiveGroup.label = '正样本 (预测为抗菌肽)';
+                positiveGroup.label = 'Positive Samples (Predicted as Anti-Gram-negative)';
                 slidingWindowData.positive_samples.forEach((sample, index) => {
                     const option = document.createElement('option');
                     option.value = `positive_${index}`;
-                    option.textContent = `${sample.id}: ${sample.sequence.substring(0, 15)}... (正样本)`;
+                    option.textContent = `${sample.id}: ${sample.sequence.substring(0, 15)}... (Anti-Gram-negative)`;
                     positiveGroup.appendChild(option);
                 });
                 sequenceSelector.appendChild(positiveGroup);
@@ -1211,11 +1211,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // 添加负样本选项
             if (slidingWindowData.negative_samples && slidingWindowData.negative_samples.length > 0) {
                 const negativeGroup = document.createElement('optgroup');
-                negativeGroup.label = '负样本 (预测为非抗菌肽)';
+                negativeGroup.label = 'Negative Samples (Predicted as Non-Anti-Gram-negative)';
                 slidingWindowData.negative_samples.forEach((sample, index) => {
                     const option = document.createElement('option');
                     option.value = `negative_${index}`;
-                    option.textContent = `${sample.id}: ${sample.sequence.substring(0, 15)}... (负样本)`;
+                    option.textContent = `${sample.id}: ${sample.sequence.substring(0, 15)}... (Non-Anti-Gram-negative)`;
                     negativeGroup.appendChild(option);
                 });
                 sequenceSelector.appendChild(negativeGroup);
@@ -1251,11 +1251,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (selectedValue.startsWith('positive_')) {
                     const index = parseInt(selectedValue.replace('positive_', ''));
                     selectedSample = currentSlidingWindowData.positive_samples[index];
-                    sampleType = '正样本';
+                    sampleType = 'Anti-Gram-negative Sample';
                 } else if (selectedValue.startsWith('negative_')) {
                     const index = parseInt(selectedValue.replace('negative_', ''));
                     selectedSample = currentSlidingWindowData.negative_samples[index];
-                    sampleType = '负样本';
+                    sampleType = 'Non-Anti-Gram-negative Sample';
                 }
 
                 if (!selectedSample) {
@@ -1265,7 +1265,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ctx.fillStyle = 'white';
                     ctx.font = '16px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText('请从下拉菜单中选择一个序列', canvas.width / 2, canvas.height / 2);
+                    ctx.fillText('Please select a sequence from the dropdown menu', canvas.width / 2, canvas.height / 2);
                     return;
                 }
 
@@ -1273,9 +1273,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const datasets = [];
                 const features = ['hydrophobicity', 'charge', 'hydrophobic_moment'];
                 const featureNames = {
-                    'hydrophobicity': '疏水性',
-                    'charge': '电荷',
-                    'hydrophobic_moment': '疏水力矩'
+                    'hydrophobicity': 'Hydrophobicity',
+                    'charge': 'Charge',
+                    'hydrophobic_moment': 'Hydrophobic Moment'
                 };
                 const colors = {
                     'hydrophobicity': 'rgba(54, 162, 235, 0.8)',
@@ -1322,7 +1322,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         plugins: {
                             title: {
                                 display: true,
-                                text: `${selectedSample.id} (${sampleType}) - 序列: ${selectedSample.sequence}`,
+                                text: `${selectedSample.id} (${sampleType}) - Sequence: ${selectedSample.sequence}`,
                                 color: 'white',
                                 font: {
                                     size: 14
@@ -1334,7 +1334,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             tooltip: {
                                 callbacks: {
                                     title: function(tooltipItems) {
-                                        return `位置: ${tooltipItems[0].parsed.x}`;
+                                        return `Position: ${tooltipItems[0].parsed.x}`;
                                     },
                                     label: function(context) {
                                         const value = context.parsed.y.toFixed(3);
@@ -1349,7 +1349,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 position: 'bottom',
                                 title: {
                                     display: true,
-                                    text: '序列位置',
+                                    text: 'Sequence Position',
                                     color: 'white'
                                 },
                                 ticks: {
@@ -1364,7 +1364,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 type: 'linear',
                                 title: {
                                     display: true,
-                                    text: '特征值',
+                                    text: 'Feature Value',
                                     color: 'white'
                                 },
                                 ticks: {
@@ -1379,19 +1379,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
             } catch (error) {
-                console.error('滑动窗口图表渲染错误:', error);
+                console.error('Sliding window chart rendering error:', error);
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = 'white';
                 ctx.font = '14px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('滑动窗口图表渲染失败', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('Sliding window chart rendering failed', canvas.width / 2, canvas.height / 2);
             }
         };
 
         const renderDimensionalityReductionCharts = (dimensionalityData) => {
             if (!dimensionalityData) {
-                console.warn('降维数据为空，跳过渲染');
+                console.warn('Dimensionality reduction data is empty, skipping rendering');
                 return;
             }
 
@@ -1420,14 +1420,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     type: 'scatter',
                     data: {
                         datasets: [{
-                            label: `抗菌肽 (n=${positiveData.length})`,
+                            label: `Anti-Gram-negative (n=${positiveData.length})`,
                             data: positiveData.map(d => ({ x: d.x, y: d.y })),
                             backgroundColor: 'rgba(40, 167, 69, 0.7)',
                             borderColor: 'rgba(40, 167, 69, 1)',
                             pointRadius: 5,
                             pointHoverRadius: 7
                         }, {
-                            label: `非抗菌肽 (n=${negativeData.length})`,
+                            label: `Non-Anti-Gram-negative (n=${negativeData.length})`,
                             data: negativeData.map(d => ({ x: d.x, y: d.y })),
                             backgroundColor: 'rgba(108, 117, 125, 0.7)',
                             borderColor: 'rgba(108, 117, 125, 1)',
@@ -1441,7 +1441,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         plugins: {
                             title: {
                                 display: true,
-                                text: 'PCA降维分析',
+                                text: 'PCA Dimensionality Reduction Analysis',
                                 color: 'white',
                                 font: { size: 16 }
                             },
@@ -1454,7 +1454,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         const dataIndex = tooltipItems[0].dataIndex;
                                         const datasetIndex = tooltipItems[0].datasetIndex;
                                         const data = datasetIndex === 0 ? positiveData : negativeData;
-                                        return `序列: ${data[dataIndex].id}`;
+                                        return `Sequence: ${data[dataIndex].id}`;
                                     },
                                     label: function(context) {
                                         const dataIndex = context.dataIndex;
@@ -1462,9 +1462,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                         const data = datasetIndex === 0 ? positiveData : negativeData;
                                         const sample = data[dataIndex];
                                         return [
-                                            `预测概率: ${sample.probability.toFixed(4)}`,
-                                            `PCA坐标: (${context.parsed.x.toFixed(3)}, ${context.parsed.y.toFixed(3)})`,
-                                            `序列: ${sample.sequence.substring(0, 20)}...`
+                                            `Prediction probability: ${sample.probability.toFixed(4)}`,
+                                            `PCA coordinates: (${context.parsed.x.toFixed(3)}, ${context.parsed.y.toFixed(3)})`,
+                                            `Sequence: ${sample.sequence.substring(0, 20)}...`
                                         ];
                                     }
                                 }
@@ -1494,13 +1494,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
             } catch (error) {
-                console.error('PCA图表渲染错误:', error);
+                console.error('PCA chart rendering error:', error);
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = 'white';
                 ctx.font = '14px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('PCA图表渲染失败', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('PCA chart rendering failed', canvas.width / 2, canvas.height / 2);
             }
         };
 
@@ -1522,14 +1522,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     type: 'scatter',
                     data: {
                         datasets: [{
-                            label: `抗菌肽 (n=${positiveData.length})`,
+                            label: `Anti-Gram-negative (n=${positiveData.length})`,
                             data: positiveData.map(d => ({ x: d.x, y: d.y })),
                             backgroundColor: 'rgba(40, 167, 69, 0.7)',
                             borderColor: 'rgba(40, 167, 69, 1)',
                             pointRadius: 5,
                             pointHoverRadius: 7
                         }, {
-                            label: `非抗菌肽 (n=${negativeData.length})`,
+                            label: `Non-Anti-Gram-negative (n=${negativeData.length})`,
                             data: negativeData.map(d => ({ x: d.x, y: d.y })),
                             backgroundColor: 'rgba(108, 117, 125, 0.7)',
                             borderColor: 'rgba(108, 117, 125, 1)',
@@ -1543,7 +1543,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         plugins: {
                             title: {
                                 display: true,
-                                text: 't-SNE降维分析',
+                                text: 't-SNE Dimensionality Reduction Analysis',
                                 color: 'white',
                                 font: { size: 16 }
                             },
@@ -1556,7 +1556,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         const dataIndex = tooltipItems[0].dataIndex;
                                         const datasetIndex = tooltipItems[0].datasetIndex;
                                         const data = datasetIndex === 0 ? positiveData : negativeData;
-                                        return `序列: ${data[dataIndex].id}`;
+                                        return `Sequence: ${data[dataIndex].id}`;
                                     },
                                     label: function(context) {
                                         const dataIndex = context.dataIndex;
@@ -1564,9 +1564,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                         const data = datasetIndex === 0 ? positiveData : negativeData;
                                         const sample = data[dataIndex];
                                         return [
-                                            `预测概率: ${sample.probability.toFixed(4)}`,
-                                            `t-SNE坐标: (${context.parsed.x.toFixed(3)}, ${context.parsed.y.toFixed(3)})`,
-                                            `序列: ${sample.sequence.substring(0, 20)}...`
+                                            `Prediction probability: ${sample.probability.toFixed(4)}`,
+                                            `t-SNE coordinates: (${context.parsed.x.toFixed(3)}, ${context.parsed.y.toFixed(3)})`,
+                                            `Sequence: ${sample.sequence.substring(0, 20)}...`
                                         ];
                                     }
                                 }
@@ -1576,7 +1576,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             x: {
                                 title: {
                                     display: true,
-                                    text: 't-SNE维度1',
+                                    text: 't-SNE Dimension 1',
                                     color: 'white'
                                 },
                                 ticks: { color: 'white' },
@@ -1585,7 +1585,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             y: {
                                 title: {
                                     display: true,
-                                    text: 't-SNE维度2',
+                                    text: 't-SNE Dimension 2',
                                     color: 'white'
                                 },
                                 ticks: { color: 'white' },
@@ -1596,13 +1596,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
             } catch (error) {
-                console.error('t-SNE图表渲染错误:', error);
+                console.error('t-SNE chart rendering error:', error);
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = 'white';
                 ctx.font = '14px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('t-SNE图表渲染失败', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('t-SNE chart rendering failed', canvas.width / 2, canvas.height / 2);
             }
         };
     };

@@ -65,3 +65,9 @@ gram_predictor/models/*.h5
 gram_predictor/models/*.keras
 *.pt
 *.pth
+gram_predictor/charts/dimensionality_reduction.png
+gram_predictor/charts/feature_comparison.png
+gram_predictor/charts/probability_histogram.png
+gram_predictor/charts/radar_chart.png
+gram_predictor/charts/scatter_plot.png
+gram_predictor/charts/sliding_window_analysis.png

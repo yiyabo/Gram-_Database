@@ -113,27 +113,27 @@
         <!-- Feature Charts Tabbed Interface -->
         <div class="card shadow-sm mb-4">
             <div class="card-header">
-                <ul class="nav nav-tabs card-header-tabs" id="feature-charts-tab" role="tablist">
+                <ul class="nav nav-tabs card-header-tabs" id="feature-charts-tab" role="tablist" style="font-size: 0.9rem;">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="boxplot-tab" data-bs-toggle="tab" data-bs-target="#boxplot-pane" type="button" role="tab">Feature Distribution</button>
+                        <button class="nav-link active" id="boxplot-tab" data-bs-toggle="tab" data-bs-target="#boxplot-pane" type="button" role="tab">Features</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="scatter-tab" data-bs-toggle="tab" data-bs-target="#scatter-pane" type="button" role="tab">Scatter Plot</button>
+                        <button class="nav-link" id="scatter-tab" data-bs-toggle="tab" data-bs-target="#scatter-pane" type="button" role="tab">Scatter</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="composition-tab" data-bs-toggle="tab" data-bs-target="#composition-pane" type="button" role="tab">AA Composition</button>
+                        <button class="nav-link" id="composition-tab" data-bs-toggle="tab" data-bs-target="#composition-pane" type="button" role="tab">Amino Acids</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="radar-tab" data-bs-toggle="tab" data-bs-target="#radar-pane" type="button" role="tab">Feature Radar</button>
+                        <button class="nav-link" id="radar-tab" data-bs-toggle="tab" data-bs-target="#radar-pane" type="button" role="tab">Radar</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="histogram-tab" data-bs-toggle="tab" data-bs-target="#histogram-pane" type="button" role="tab">Probability Distribution</button>
+                        <button class="nav-link" id="histogram-tab" data-bs-toggle="tab" data-bs-target="#histogram-pane" type="button" role="tab">Probability</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="sliding-window-tab" data-bs-toggle="tab" data-bs-target="#sliding-window-pane" type="button" role="tab">Sliding Window Analysis</button>
+                        <button class="nav-link" id="sliding-window-tab" data-bs-toggle="tab" data-bs-target="#sliding-window-pane" type="button" role="tab">Sliding Window</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="dimensionality-reduction-tab" data-bs-toggle="tab" data-bs-target="#dimensionality-reduction-pane" type="button" role="tab">降维可视化</button>
+                        <button class="nav-link" id="dimensionality-reduction-tab" data-bs-toggle="tab" data-bs-target="#dimensionality-reduction-pane" type="button" role="tab">Dim. Reduction</button>
                     </li>
                 </ul>
             </div>
@@ -156,9 +156,9 @@
                     </div>
                     <div class="tab-pane fade" id="sliding-window-pane" role="tabpanel">
                         <div class="mb-3">
-                            <label for="sequenceSelector" class="form-label text-white">选择序列进行滑动窗口分析：</label>
+                            <label for="sequenceSelector" class="form-label text-white">Select sequence for sliding window analysis:</label>
                             <select class="form-select" id="sequenceSelector" style="max-width: 400px;">
-                                <option value="">请选择一个序列...</option>
+                                <option value="">Please select a sequence...</option>
                             </select>
                         </div>
                         <div style="height:400px;"><canvas id="slidingWindowChart"></canvas></div>
@@ -166,11 +166,11 @@
                     <div class="tab-pane fade" id="dimensionality-reduction-pane" role="tabpanel">
                         <div class="row">
                             <div class="col-md-6">
-                                <h6 class="text-white mb-3">PCA降维可视化</h6>
+                                <h6 class="text-white mb-3">PCA Dimensionality Reduction</h6>
                                 <div style="height:350px;"><canvas id="pcaChart"></canvas></div>
                             </div>
                             <div class="col-md-6">
-                                <h6 class="text-white mb-3">t-SNE降维可视化</h6>
+                                <h6 class="text-white mb-3">t-SNE Dimensionality Reduction</h6>
                                 <div style="height:350px;"><canvas id="tsneChart"></canvas></div>
                             </div>
                         </div>

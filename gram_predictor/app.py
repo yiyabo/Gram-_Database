@@ -303,8 +303,8 @@ def generate_box_plot_data(results_with_features_df):
 def save_charts_to_files(results_with_features_df):
     """保存各种图表到文件（覆盖模式）"""
     try:
-        # 设置中文字体
-        plt.rcParams['font.sans-serif'] = ['Arial Unicode MS', 'SimHei', 'DejaVu Sans']
+        # 设置字体
+        plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans', 'sans-serif']
         plt.rcParams['axes.unicode_minus'] = False
         
         # 分离positive和negative数据
@@ -347,12 +347,12 @@ def save_feature_comparison_chart(positive_data, negative_data):
     try:
         features = ['Charge', 'Hydrophobicity', 'Hydrophobic_Moment', 'Instability_Index', 'Isoelectric_Point', 'Aliphatic_Index']
         feature_labels = {
-            'Charge': '电荷',
-            'Hydrophobicity': '疏水性',
-            'Hydrophobic_Moment': '疏水力矩',
-            'Instability_Index': '不稳定指数',
-            'Isoelectric_Point': '等电点',
-            'Aliphatic_Index': '脂肪族指数'
+            'Charge': 'Charge',
+            'Hydrophobicity': 'Hydrophobicity',
+            'Hydrophobic_Moment': 'Hydrophobic Moment',
+            'Instability_Index': 'Instability Index',
+            'Isoelectric_Point': 'Isoelectric Point',
+            'Aliphatic_Index': 'Aliphatic Index'
         }
         
         # 计算标准化数据（与前端一致）
@@ -382,14 +382,14 @@ def save_feature_comparison_chart(positive_data, negative_data):
             x = np.arange(len(labels))
             width = 0.35
             
-            bars1 = ax.bar(x - width/2, pos_means, width, label=f'抗菌肽 (n={len(positive_data)})',
+            bars1 = ax.bar(x - width/2, pos_means, width, label=f'Anti-Gram-negative (n={len(positive_data)})',
                           color='#28a745', alpha=0.8)
-            bars2 = ax.bar(x + width/2, neg_means, width, label=f'非抗菌肽 (n={len(negative_data)})',
+            bars2 = ax.bar(x + width/2, neg_means, width, label=f'Non-Anti-Gram-negative (n={len(negative_data)})',
                           color='#6c757d', alpha=0.8)
             
-            ax.set_xlabel('特征类型', fontsize=14, fontweight='bold')
-            ax.set_ylabel('Z-score标准化值', fontsize=14, fontweight='bold')
-            ax.set_title('特征对比分析 (Z-score标准化)', fontsize=16, fontweight='bold')
+            ax.set_xlabel('Feature Type', fontsize=14, fontweight='bold')
+            ax.set_ylabel('Z-score Normalized Value', fontsize=14, fontweight='bold')
+            ax.set_title('Feature Comparison Analysis (Z-score Normalized)', fontsize=16, fontweight='bold')
             ax.set_xticks(x)
             ax.set_xticklabels(labels, rotation=45, ha='right')
             ax.legend()
@@ -451,18 +451,18 @@ def save_radar_chart(positive_data, negative_data):
             
             fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(projection='polar'))
             
-            ax.plot(angles, pos_values, 'o-', linewidth=2, label=f'抗菌肽 (n={len(positive_data)})', 
+            ax.plot(angles, pos_values, 'o-', linewidth=2, label=f'Anti-Gram-negative (n={len(positive_data)})', 
                    color='#28a745')
             ax.fill(angles, pos_values, alpha=0.25, color='#28a745')
             
-            ax.plot(angles, neg_values, 'o-', linewidth=2, label=f'非抗菌肽 (n={len(negative_data)})', 
+            ax.plot(angles, neg_values, 'o-', linewidth=2, label=f'Non-Anti-Gram-negative (n={len(negative_data)})', 
                    color='#6c757d')
             ax.fill(angles, neg_values, alpha=0.25, color='#6c757d')
             
             ax.set_xticks(angles[:-1])
             ax.set_xticklabels(valid_features)
             ax.set_ylim(0, 1)
-            ax.set_title('特征雷达图对比', size=16, fontweight='bold', pad=20)
+            ax.set_title('Feature Radar Chart Comparison', size=16, fontweight='bold', pad=20)
             ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1.0))
             ax.grid(True)
             
@@ -482,13 +482,13 @@ def save_scatter_plot(positive_data, negative_data):
             
             # 绘制数据点
             ax.scatter(positive_data['Hydrophobicity'], positive_data['Charge'], 
-                      alpha=0.7, c='#28a745', label=f'抗菌肽 (n={len(positive_data)})', s=50)
+                      alpha=0.7, c='#28a745', label=f'Anti-Gram-negative (n={len(positive_data)})', s=50)
             ax.scatter(negative_data['Hydrophobicity'], negative_data['Charge'], 
-                      alpha=0.7, c='#6c757d', label=f'非抗菌肽 (n={len(negative_data)})', s=50)
+                      alpha=0.7, c='#6c757d', label=f'Non-Anti-Gram-negative (n={len(negative_data)})', s=50)
             
-            ax.set_xlabel('疏水性', fontsize=14, fontweight='bold')
-            ax.set_ylabel('电荷', fontsize=14, fontweight='bold')
-            ax.set_title('疏水性 vs 电荷散点图', fontsize=16, fontweight='bold')
+            ax.set_xlabel('Hydrophobicity', fontsize=14, fontweight='bold')
+            ax.set_ylabel('Charge', fontsize=14, fontweight='bold')
+            ax.set_title('Hydrophobicity vs Charge Scatter Plot', fontsize=16, fontweight='bold')
             ax.legend()
             ax.grid(True, alpha=0.3)
             
@@ -524,14 +524,14 @@ def save_aa_composition_chart(positive_data, negative_data):
         x = np.arange(len(amino_acids))
         width = 0.35
         
-        bars1 = ax.bar(x - width/2, pos_freqs, width, label=f'抗菌肽 (n={len(positive_data)})',
+        bars1 = ax.bar(x - width/2, pos_freqs, width, label=f'Anti-Gram-negative (n={len(positive_data)})',
                       color='#28a745', alpha=0.8)
-        bars2 = ax.bar(x + width/2, neg_freqs, width, label=f'非抗菌肽 (n={len(negative_data)})',
+        bars2 = ax.bar(x + width/2, neg_freqs, width, label=f'Non-Anti-Gram-negative (n={len(negative_data)})',
                       color='#6c757d', alpha=0.8)
         
-        ax.set_xlabel('氨基酸', fontsize=14, fontweight='bold')
-        ax.set_ylabel('频率 (%)', fontsize=14, fontweight='bold')
-        ax.set_title('氨基酸组成对比', fontsize=16, fontweight='bold')
+        ax.set_xlabel('Amino Acid', fontsize=14, fontweight='bold')
+        ax.set_ylabel('Frequency (%)', fontsize=14, fontweight='bold')
+        ax.set_title('Amino Acid Composition Comparison', fontsize=16, fontweight='bold')
         ax.set_xticks(x)
         ax.set_xticklabels(amino_acids)
         ax.legend()
@@ -554,9 +554,9 @@ def save_probability_histogram(results_df):
             fig, ax = plt.subplots(figsize=(10, 6))
             
             ax.hist(probabilities, bins=20, alpha=0.7, color='#007bff', edgecolor='black')
-            ax.set_xlabel('预测概率', fontsize=14, fontweight='bold')
-            ax.set_ylabel('序列数量', fontsize=14, fontweight='bold')
-            ax.set_title('预测概率分布', fontsize=16, fontweight='bold')
+            ax.set_xlabel('Prediction Probability', fontsize=14, fontweight='bold')
+            ax.set_ylabel('Number of Sequences', fontsize=14, fontweight='bold')
+            ax.set_title('Prediction Probability Distribution', fontsize=16, fontweight='bold')
             ax.grid(True, alpha=0.3)
             
             plt.tight_layout()
@@ -595,7 +595,7 @@ def save_sliding_window_chart(results_df):
             sequence = seq_data['Sequence']
             seq_id = seq_data['ID']
             prediction = seq_data['Prediction']
-            label = "抗菌肽" if prediction == 1 else "非抗菌肽"
+            label = "Anti-Gram-negative" if prediction == 1 else "Non-Anti-Gram-negative"
             
             # 计算滑动窗口特征
             window_data = calculate_sliding_window_features(sequence, window_size=3)
@@ -606,13 +606,13 @@ def save_sliding_window_chart(results_df):
                 charge = [w['charge'] for w in window_data]
                 
                 ax = axes[i]
-                ax.plot(positions, hydrophobicity, 'b-', label='疏水性', linewidth=2)
+                ax.plot(positions, hydrophobicity, 'b-', label='Hydrophobicity', linewidth=2)
                 ax2 = ax.twinx()
-                ax2.plot(positions, charge, 'r-', label='电荷', linewidth=2)
+                ax2.plot(positions, charge, 'r-', label='Charge', linewidth=2)
                 
-                ax.set_xlabel('序列位置')
-                ax.set_ylabel('疏水性', color='b')
-                ax2.set_ylabel('电荷', color='r')
+                ax.set_xlabel('Sequence Position')
+                ax.set_ylabel('Hydrophobicity', color='b')
+                ax2.set_ylabel('Charge', color='r')
                 ax.set_title(f'{seq_id} ({label})\n{sequence[:20]}...')
                 ax.grid(True, alpha=0.3)
         
@@ -668,19 +668,19 @@ def save_dimensionality_reduction_charts(results_df):
             negative_mask = labels == 0
             
             ax1.scatter(pca_result[positive_mask, 0], pca_result[positive_mask, 1], 
-                       c='#28a745', alpha=0.7, label=f'抗菌肽 (n={sum(positive_mask)})', s=50)
+                       c='#28a745', alpha=0.7, label=f'Anti-Gram-negative (n={sum(positive_mask)})', s=50)
             ax1.scatter(pca_result[negative_mask, 0], pca_result[negative_mask, 1], 
-                       c='#6c757d', alpha=0.7, label=f'非抗菌肽 (n={sum(negative_mask)})', s=50)
+                       c='#6c757d', alpha=0.7, label=f'Non-Anti-Gram-negative (n={sum(negative_mask)})', s=50)
             
             ax1.set_xlabel(f'PC1 ({pca.explained_variance_ratio_[0]:.1%} variance)')
             ax1.set_ylabel(f'PC2 ({pca.explained_variance_ratio_[1] if n_components > 1 else 0:.1%} variance)')
-            ax1.set_title('PCA降维分析')
+            ax1.set_title('PCA Dimensionality Reduction Analysis')
             ax1.legend()
             ax1.grid(True, alpha=0.3)
             
         except Exception as pca_error:
             print(f"PCA error: {pca_error}")
-            ax1.text(0.5, 0.5, 'PCA分析失败', transform=ax1.transAxes, ha='center')
+            ax1.text(0.5, 0.5, 'PCA Analysis Failed', transform=ax1.transAxes, ha='center')
         
         # t-SNE
         try:
@@ -689,22 +689,22 @@ def save_dimensionality_reduction_charts(results_df):
                 tsne_result = tsne.fit_transform(features_scaled)
                 
                 ax2.scatter(tsne_result[positive_mask, 0], tsne_result[positive_mask, 1], 
-                           c='#28a745', alpha=0.7, label=f'抗菌肽 (n={sum(positive_mask)})', s=50)
+                           c='#28a745', alpha=0.7, label=f'Anti-Gram-negative (n={sum(positive_mask)})', s=50)
                 ax2.scatter(tsne_result[negative_mask, 0], tsne_result[negative_mask, 1], 
-                           c='#6c757d', alpha=0.7, label=f'非抗菌肽 (n={sum(negative_mask)})', s=50)
+                           c='#6c757d', alpha=0.7, label=f'Non-Anti-Gram-negative (n={sum(negative_mask)})', s=50)
                 
-                ax2.set_xlabel('t-SNE维度1')
-                ax2.set_ylabel('t-SNE维度2')
-                ax2.set_title('t-SNE降维分析')
+                ax2.set_xlabel('t-SNE Dimension 1')
+                ax2.set_ylabel('t-SNE Dimension 2')
+                ax2.set_title('t-SNE Dimensionality Reduction Analysis')
                 ax2.legend()
                 ax2.grid(True, alpha=0.3)
             else:
-                ax2.text(0.5, 0.5, 't-SNE需要更多样本\n(至少30个)', transform=ax2.transAxes, ha='center')
-                ax2.set_title('t-SNE降维分析')
+                ax2.text(0.5, 0.5, 't-SNE requires more samples\n(at least 30)', transform=ax2.transAxes, ha='center')
+                ax2.set_title('t-SNE Dimensionality Reduction Analysis')
             
         except Exception as tsne_error:
             print(f"t-SNE error: {tsne_error}")
-            ax2.text(0.5, 0.5, 't-SNE分析失败', transform=ax2.transAxes, ha='center')
+            ax2.text(0.5, 0.5, 't-SNE Analysis Failed', transform=ax2.transAxes, ha='center')
         
         plt.tight_layout()
         plt.savefig(os.path.join(CHARTS_DIR, 'dimensionality_reduction.png'), 
