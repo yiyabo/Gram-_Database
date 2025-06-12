@@ -584,7 +584,7 @@ textarea.form-control {
 
 .selected-file-name {
     font-weight: 500;
-    color: var(--accent-cyan);
+    color: var(--text-on-glass-primary); /* Changed to primary text color (white) */
     margin-top: 0.8rem;
     font-size: 0.95rem;
     display: block; /* Ensure it takes full width for centering */
@@ -647,6 +647,16 @@ textarea.form-control {
 }
 .table-hover tbody tr:hover td:last-child {
     border-right-color: var(--accent-cyan); /* For effect with box-shadow */
+}
+
+/* Override for DataTable rows to ensure uniform background and text color */
+.table.dataTable tbody tr {
+    background-color: transparent !important;
+    color: var(--text-on-glass-primary) !important;
+}
+
+.table.dataTable tbody td {
+    color: var(--text-on-glass-primary) !important;
 }
 
 
@@ -1080,4 +1090,11 @@ pre {
 .table td.actions-cell { /* Assuming you'll add a class to the <td> */
     text-align: center; /* Or right, depending on preference */
     min-width: 80px; /* Give some space for buttons */
+}
+
+/* Style for the small helper text in advanced params on generate_params.html */
+#advancedParams .card-body p.small {
+    color: var(--text-on-glass-primary) !important; /* Ensure it's bright white, overriding other p or small styles */
+    opacity: 0.9; /* Slightly less stark than pure white if needed, but still bright */
+    font-style: italic; /* Optional: make it italic to differentiate further */
 }

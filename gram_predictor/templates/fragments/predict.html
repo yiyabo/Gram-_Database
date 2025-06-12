@@ -1,0 +1,200 @@
+<!-- Main container for the predict view -->
+<div id="predict-view-container">
+
+    <!-- Submission Section -->
+    <div id="submission-section">
+        <div class="submit-form-container" style="max-width: 800px; margin-left: auto; margin-right: auto;">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-input-cursor-text"></i> Submit Peptide Sequences for Prediction</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs" id="inputTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="file-tab" data-bs-toggle="tab" data-bs-target="#file-pane" type="button" role="tab">File Upload</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="text-tab" data-bs-toggle="tab" data-bs-target="#text-pane" type="button" role="tab">Text Input</button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content mt-3" id="inputTabContent">
+                        <!-- File Upload Pane -->
+                        <div class="tab-pane fade show active" id="file-pane" role="tabpanel">
+                            <form id="fileForm" enctype="multipart/form-data">
+                                <div class="mb-3">
+                                    <div class="file-upload-container" id="dropZone">
+                                        <div class="file-upload-content text-center p-5">
+                                            <i class="bi bi-cloud-arrow-up display-4"></i>
+                                            <h5 class="mt-3">Drag and drop FASTA file here</h5>
+                                            <p class="text-muted">Or</p>
+                                            <label for="fastaFile" class="btn btn-primary">Choose File</label>
+                                            <input type="file" id="fastaFile" name="fasta_file" accept=".fasta,.fa,.txt" class="d-none">
+                                            <p class="selected-file-name mt-2"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-success btn-lg"><i class="bi bi-lightning-charge"></i> Start Prediction</button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Text Input Pane -->
+                        <div class="tab-pane fade" id="text-pane" role="tabpanel">
+                            <form id="textForm">
+                                <div class="mb-3">
+                                    <label for="fastaText" class="form-label">FASTA Format Sequence</label>
+                                    <textarea class="form-control" id="fastaText" name="fasta_text" rows="10" placeholder=">Sequence ID&#10;ACDEFGHIKLMNPQRSTVWY"></textarea>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <button type="button" id="loadExample" class="btn btn-outline-primary"><i class="bi bi-clipboard-data"></i> Load Example</button>
+                                    <button type="submit" class="btn btn-success"><i class="bi bi-lightning-charge"></i> Start Prediction</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Format Instructions -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Sequence Format Instructions</h5>
+                </div>
+                <div class="card-body">
+                    <p>Please provide peptide sequences in FASTA format. Sequences only support 20 standard amino acid letters. A single prediction supports up to 20,000 sequences.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading and Error Section (shared for submit and results) -->
+    <div id="loadingSection" class="d-none mt-4">
+        <div class="card shadow-sm">
+            <div class="card-body text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <h5 class="mt-3">Processing...</h5>
+                <p class="text-muted">Please wait, this may take a moment.</p>
+            </div>
+        </div>
+    </div>
+    <div id="errorSection" class="d-none mt-4">
+        <div class="card shadow-sm border-danger">
+            <div class="card-body text-center py-4">
+                <i class="bi bi-exclamation-triangle text-danger display-4"></i>
+                <h5 class="mt-3 text-danger">An Error Occurred</h5>
+                <p id="errorMessage" class="text-muted"></p>
+                <button id="resetViewBtn" class="btn btn-outline-primary mt-2"><i class="bi bi-arrow-counterclockwise"></i> Try Again</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section (initially hidden) -->
+    <div id="resultsSection" class="d-none mt-4">
+        <div class="d-flex justify-content-start mb-4">
+             <button id="newPredictionBtn" class="btn btn-outline-secondary"><i class="bi bi-arrow-left-circle"></i> Make Another Prediction</button>
+        </div>
+        <!-- Statistics Card -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Prediction Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center" id="stats-container">
+                    <!-- Stats will be populated here -->
+                </div>
+                <div class="mt-4 mx-auto" style="position: relative; height:200px; max-width:200px;">
+                    <canvas id="resultChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature Charts Tabbed Interface -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="feature-charts-tab" role="tablist" style="font-size: 0.9rem;">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="boxplot-tab" data-bs-toggle="tab" data-bs-target="#boxplot-pane" type="button" role="tab">Features</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="scatter-tab" data-bs-toggle="tab" data-bs-target="#scatter-pane" type="button" role="tab">Scatter</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="composition-tab" data-bs-toggle="tab" data-bs-target="#composition-pane" type="button" role="tab">Amino Acids</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="radar-tab" data-bs-toggle="tab" data-bs-target="#radar-pane" type="button" role="tab">Radar</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="histogram-tab" data-bs-toggle="tab" data-bs-target="#histogram-pane" type="button" role="tab">Probability</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="sliding-window-tab" data-bs-toggle="tab" data-bs-target="#sliding-window-pane" type="button" role="tab">Sliding Window</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="dimensionality-reduction-tab" data-bs-toggle="tab" data-bs-target="#dimensionality-reduction-pane" type="button" role="tab">Dim. Reduction</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="feature-charts-tabContent">
+                    <div class="tab-pane fade show active" id="boxplot-pane" role="tabpanel">
+                        <div style="height:300px;"><canvas id="featureBoxPlot"></canvas></div>
+                    </div>
+                    <div class="tab-pane fade" id="scatter-pane" role="tabpanel">
+                        <div style="height:300px;"><canvas id="featureScatterPlot"></canvas></div>
+                    </div>
+                    <div class="tab-pane fade" id="composition-pane" role="tabpanel">
+                        <div style="height:300px;"><canvas id="aaCompositionChart"></canvas></div>
+                    </div>
+                    <div class="tab-pane fade" id="radar-pane" role="tabpanel">
+                        <div style="height:300px;"><canvas id="featureRadarChart"></canvas></div>
+                    </div>
+                    <div class="tab-pane fade" id="histogram-pane" role="tabpanel">
+                        <div style="height:300px;"><canvas id="probabilityHistogram"></canvas></div>
+                    </div>
+                    <div class="tab-pane fade" id="sliding-window-pane" role="tabpanel">
+                        <div class="mb-3">
+                            <label for="sequenceSelector" class="form-label text-white">Select sequence for sliding window analysis:</label>
+                            <select class="form-select" id="sequenceSelector" style="max-width: 400px;">
+                                <option value="">Please select a sequence...</option>
+                            </select>
+                        </div>
+                        <div style="height:400px;"><canvas id="slidingWindowChart"></canvas></div>
+                    </div>
+                    <div class="tab-pane fade" id="dimensionality-reduction-pane" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-white mb-3">PCA Dimensionality Reduction</h6>
+                                <div style="height:350px;"><canvas id="pcaChart"></canvas></div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-white mb-3">t-SNE Dimensionality Reduction</h6>
+                                <div style="height:350px;"><canvas id="tsneChart"></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Detailed Results Table -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-table"></i> Detailed Prediction Results</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-end mb-3">
+                    <button id="exportCSV" class="btn btn-outline-primary me-2"><i class="bi bi-file-earmark-spreadsheet"></i> Export CSV</button>
+                    <button id="exportFASTA" class="btn btn-outline-success"><i class="bi bi-file-earmark-text"></i> Export Positive FASTA</button>
+                </div>
+                <div class="table-responsive">
+                    <table id="resultsDataTable" class="table table-hover" style="width:100%">
+                        <!-- DataTables will populate the header and body -->
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

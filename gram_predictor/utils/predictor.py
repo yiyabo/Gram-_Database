@@ -376,14 +376,14 @@ def predict_sequences(model, features_df):
     
     # 添加预测标签
     results_df['Label'] = results_df['Prediction'].apply(
-        lambda x: "抗革兰氏阴性菌" if x == 1 else "非抗革兰氏阴性菌"
+        lambda x: "Anti-Gram-negative" if x == 1 else "Non-Anti-Gram-negative"
     )
     
     # 统计预测结果
     prediction_counts = Counter(results_df['Label'])
     total = len(results_df)
     
-    logger.info("预测结果统计:")
+    logger.info("Prediction result statistics:")
     for label, count in prediction_counts.items():
         percentage = count / total * 100
         logger.info(f"  {label}: {count} ({percentage:.2f}%)")
