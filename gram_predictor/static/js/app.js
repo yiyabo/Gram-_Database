@@ -1781,6 +1781,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let filteredSequences = [];
         let currentPage = 1;
         const sequencesPerPage = 25;
+        let currentSortField = null;
+        let currentSortDirection = 'asc';
 
         // Show toast message function
         function showToast(message, type = 'info') {
@@ -1870,10 +1872,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 const truncatedSeq = seq.sequence.length > 50 ? 
                     seq.sequence.substring(0, 50) + '...' : seq.sequence;
                 
+                // 获取理化特性数据，如果没有则使用默认值
+                const props = seq.properties || {
+                    charge: 0,
+                    hydrophobicity: 0,
+                    hydrophobic_moment: 0,
+                    instability_index: 0,
+                    isoelectric_point: 7.0,
+                    aliphatic_index: 0,
+                    hydrophilicity: 0
+                };
+                
                 row.innerHTML = `
                     <td>${seq.id}</td>
                     <td><code class="text-light">${truncatedSeq}</code></td>
                     <td>${seq.length}</td>
+                    <td class="text-center">${props.charge.toFixed(2)}</td>
+                    <td class="text-center">${props.hydrophobicity.toFixed(2)}</td>
+                    <td class="text-center">${props.hydrophobic_moment.toFixed(2)}</td>
+                    <td class="text-center">${props.instability_index.toFixed(1)}</td>
+                    <td class="text-center">${props.isoelectric_point.toFixed(2)}</td>
+                    <td class="text-center">${props.aliphatic_index.toFixed(1)}</td>
+                    <td class="text-center">${props.hydrophilicity.toFixed(2)}</td>
                 `;
                 tbody.appendChild(row);
             });
@@ -1904,8 +1924,68 @@ document.addEventListener('DOMContentLoaded', () => {
             if (nextBtn) nextBtn.disabled = currentPage === totalPages || totalPages === 0;
         }
 
+        // 排序功能
+        function sortSequences(field) {
+            // 如果点击的是相同字段，切换排序方向
+            if (currentSortField === field) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortField = field;
+                currentSortDirection = 'asc';
+            }
+            
+            filteredSequences.sort((a, b) => {
+                let valueA, valueB;
+                
+                if (field === 'length') {
+                    valueA = a.length;
+                    valueB = b.length;
+                } else if (a.properties && b.properties) {
+                    valueA = a.properties[field] || 0;
+                    valueB = b.properties[field] || 0;
+                } else {
+                    return 0;
+                }
+                
+                if (currentSortDirection === 'asc') {
+                    return valueA - valueB;
+                } else {
+                    return valueB - valueA;
+                }
+            });
+            
+            currentPage = 1; // 排序后重置到第一页
+            renderTable();
+            updateSortIcons();
+        }
+        
+        // 更新排序图标
+        function updateSortIcons() {
+            // 清除所有排序图标
+            document.querySelectorAll('.sortable-header i').forEach(icon => {
+                icon.className = 'bi bi-arrow-down-up';
+            });
+            
+            // 设置当前排序字段的图标
+            if (currentSortField) {
+                const header = document.querySelector(`[data-sort="${currentSortField}"] i`);
+                if (header) {
+                    header.className = currentSortDirection === 'asc' ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
+                }
+            }
+        }
+
         // Add event listeners for pagination and other controls
         function setupEventListeners() {
+            // 排序功能事件监听
+            document.querySelectorAll('[data-sort]').forEach(header => {
+                header.addEventListener('click', function() {
+                    const field = this.getAttribute('data-sort');
+                    sortSequences(field);
+                });
+                header.style.cursor = 'pointer';
+            });
+            
             // Search functionality
             const searchInput = document.getElementById('sequenceSearch');
             if (searchInput) {

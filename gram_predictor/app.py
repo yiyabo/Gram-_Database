@@ -1186,9 +1186,38 @@ def generate_sequences_route():
         traceback.print_exc()
         return jsonify({'error': f'Internal server error during sequence generation: {str(e)}'}), 500
 
+def calculate_sequence_properties(sequence):
+    """计算单个序列的理化特性"""
+    try:
+        pep = Peptide(sequence)
+        length = len(sequence)
+        
+        properties = {
+            'charge': float(pep.charge(pH=7.4)),
+            'hydrophobicity': float(pep.hydrophobicity(scale="Eisenberg")),
+            'hydrophobic_moment': float(pep.hydrophobic_moment(window=min(11, length)) or 0.0),
+            'instability_index': float(pep.instability_index()),
+            'isoelectric_point': float(pep.isoelectric_point()),
+            'aliphatic_index': float(pep.aliphatic_index()),
+            'hydrophilicity': float(pep.hydrophobicity(scale="HoppWoods"))
+        }
+        return properties
+    except Exception as e:
+        print(f"Error calculating properties for sequence: {e}")
+        # 返回默认值
+        return {
+            'charge': 0.0,
+            'hydrophobicity': 0.0,
+            'hydrophobic_moment': 0.0,
+            'instability_index': 0.0,
+            'isoelectric_point': 7.0,
+            'aliphatic_index': 0.0,
+            'hydrophilicity': 0.0
+        }
+
 @app.route('/api/database')
 def get_database():
-    """Get database sequences from Gram+-.fasta file."""
+    """Get database sequences from Gram+-.fasta file with calculated physicochemical properties."""
     print("DEBUG: /api/database endpoint called")
     try:
         # 构建FASTA文件路径
@@ -1203,18 +1232,35 @@ def get_database():
         sequences = []
         total_length = 0
         
-        # 读取FASTA文件
-        for record in SeqIO.parse(fasta_path, "fasta"):
+        print("开始计算序列理化特性...")
+        
+        # 读取FASTA文件并计算理化特性
+        for i, record in enumerate(SeqIO.parse(fasta_path, "fasta")):
             sequence_str = str(record.seq).upper()
             sequence_length = len(sequence_str)
+            
+            # 跳过包含非标准氨基酸的序列
+            if not sequence_str or any(aa not in AMINO_ACIDS for aa in sequence_str):
+                print(f"跳过无效序列 {record.id}: {sequence_str}")
+                continue
+            
+            # 计算理化特性
+            properties = calculate_sequence_properties(sequence_str)
             
             sequences.append({
                 'id': record.id,
                 'sequence': sequence_str,
                 'length': sequence_length,
-                'description': record.description
+                'description': record.description,
+                'properties': properties
             })
             total_length += sequence_length
+            
+            # 每处理50条序列打印一次进度
+            if (i + 1) % 50 == 0:
+                print(f"已处理 {i + 1} 条序列...")
+        
+        print(f"序列理化特性计算完成！共处理 {len(sequences)} 条有效序列")
         
         # 计算统计信息
         stats = {
@@ -1230,7 +1276,7 @@ def get_database():
             'stats': stats,
             'file_info': {
                 'path': fasta_path,
-                'description': 'Antimicrobial peptide sequences with activity against Gram-negative bacteria'
+                'description': 'Antimicrobial peptide sequences with activity against Gram-negative bacteria (with calculated physicochemical properties)'
             }
         })
         
@@ -1252,4 +1298,4 @@ def model_status():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=8080)
+    app.run(debug=True, host='0.0.0.0', port=8081)

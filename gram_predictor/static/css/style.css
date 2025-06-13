@@ -49,6 +49,50 @@
     --border-radius-lg: 18px; /* Keep this or revert to 20px if preferred */
 }
 
+/* 数据库表格特有样式 */
+.sortable-header {
+    cursor: pointer;
+    transition: var(--main-transition);
+    user-select: none;
+}
+
+.sortable-header:hover {
+    color: var(--accent-cyan) !important;
+    text-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+}
+
+.sortable-header i {
+    margin-left: 4px;
+    opacity: 0.7;
+    transition: var(--main-transition);
+}
+
+.sortable-header:hover i {
+    opacity: 1;
+    color: var(--accent-cyan);
+}
+
+/* 理化特性数值着色 */
+.property-positive {
+    color: var(--accent-green);
+}
+
+.property-negative {
+    color: var(--accent-pink);
+}
+
+.property-neutral {
+    color: var(--text-on-glass-secondary);
+}
+
+/* 表格行悬停效果增强 */
+.table-dark .table-hover tbody tr:hover {
+    background-color: rgba(0, 229, 255, 0.1);
+    box-shadow: 0 2px 12px rgba(0, 229, 255, 0.2);
+    transform: translateY(-1px);
+    transition: var(--main-transition);
+}
+
 body {
     font-family: 'Inter', sans-serif;
     background: linear-gradient(var(--bg-gradient-angle), var(--bg-gradient-start), var(--bg-gradient-mid), var(--bg-gradient-end));
