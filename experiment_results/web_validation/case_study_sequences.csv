@@ -1,0 +1,6 @@
+id,sequence,description,expected_activity,design_rationale
+Candidate_001,KWKLFKKIEKVGQNIRDGIIKAGPAVAVVGQATQIAK,高正电荷，富含赖氨酸的设计肽,High,基于已知抗菌肽LL-37的结构特征设计
+Candidate_002,GIGKFLHSAKKFGKAFVGEIMNS,中等长度，平衡疏水性和电荷,Medium,优化的疏水-亲水平衡设计
+Candidate_003,FLPIIAKIIEKFKSKGKDWKK,富含疏水氨基酸和正电荷残基,High,增强膜穿透能力的设计
+Candidate_004,AAAAAAAAAAAAAAAAAA,简单重复序列（负对照）,Low,缺乏功能性氨基酸的对照序列
+Candidate_005,KRWWKWWRR,短肽，高电荷密度,Medium,基于色氨酸-精氨酸模式的短肽设计

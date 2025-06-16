@@ -1,0 +1,26 @@
+{
+  "total_generated": 20,
+  "positive_predictions": 20,
+  "average_probability": 0.9640342484578038,
+  "diversity_analysis": {
+    "generated_unique_ratio": 1.0,
+    "real_unique_ratio": 1.0,
+    "length_stats": {
+      "generated": {
+        "mean": 40.0,
+        "std": 0.0,
+        "min": 40,
+        "max": 40
+      },
+      "real": {
+        "mean": 28.83,
+        "std": 9.814331357764521,
+        "min": 11,
+        "max": 48
+      }
+    },
+    "aa_composition_similarity": 0.9720432348029919,
+    "js_divergence": 0.0279567651970081
+  },
+  "high_confidence_count": 19
+}
