@@ -26,7 +26,7 @@ VOCAB_DICT['<PAD>'] = 0
 VOCAB_DICT['<UNK>'] = 1
 VOCAB_SIZE = len(VOCAB_DICT)
 
-MAX_SEQUENCE_LENGTH = 32
+MAX_SEQUENCE_LENGTH = 128
 PAD_TOKEN_ID = VOCAB_DICT['<PAD>']
 UNK_TOKEN_ID = VOCAB_DICT['<UNK>']
 
@@ -148,63 +148,109 @@ def load_and_preprocess_data(csv_path, vocab_dict, max_seq_len,
 
 
 def build_hyper_model(hp):
-    """构建并编译混合分类的超模型 (用于Keras Tuner)"""
-    # 超参数定义
-    embedding_dim_seq = hp.Choice('embedding_dim_seq', values=[32, 64, 128])
-    lstm_units = hp.Choice('lstm_units', values=[32, 64, 128])
-    
-    mlp_dense1_units = hp.Int('mlp_dense1_units', min_value=32, max_value=128, step=32)
-    mlp_dense2_units = hp.Int('mlp_dense2_units', min_value=16, max_value=64, step=16)
-    # 可以选择是否包含第二层MLP
+    """构建并编译混合分类的超模型 (用于Keras Tuner) - 高性能版本"""
+    # 超参数定义 - 大幅扩展搜索空间
+    embedding_dim_seq = hp.Choice('embedding_dim_seq', values=[128, 256, 512])
+    lstm_units = hp.Choice('lstm_units', values=[128, 256, 512])
+
+    # 是否使用双层LSTM
+    use_stacked_lstm = hp.Boolean('use_stacked_lstm', default=False)
+
+    # MLP分支 - 增加更多层和更大容量
+    mlp_dense1_units = hp.Int('mlp_dense1_units', min_value=64, max_value=512, step=64)
+    mlp_dense2_units = hp.Int('mlp_dense2_units', min_value=32, max_value=256, step=32)
+
+    # MLP层数选择
     include_mlp_dense2 = hp.Boolean('include_mlp_dense2', default=True)
+    include_mlp_dense3 = hp.Boolean('include_mlp_dense3', default=False)
 
+    # 融合层 - 增加容量
+    fused_dense1_units = hp.Int('fused_dense1_units', min_value=64, max_value=512, step=64)
+    include_fused_dense2 = hp.Boolean('include_fused_dense2', default=True)
 
-    fused_dense_units = hp.Int('fused_dense_units', min_value=32, max_value=128, step=32)
-    dropout_rate = hp.Float('dropout_rate', min_value=0.2, max_value=0.5, step=0.1)
-    learning_rate = hp.Choice('learning_rate', values=[1e-3, 5e-4, 1e-4])
+    # 正则化参数
+    dropout_rate = hp.Float('dropout_rate', min_value=0.1, max_value=0.5, step=0.05)
+    recurrent_dropout_rate = hp.Float('recurrent_dropout_rate', min_value=0.1, max_value=0.4, step=0.05)
 
-    # 序列输入分支
+    # 学习率和优化器参数
+    learning_rate = hp.Choice('learning_rate', values=[2e-3, 1e-3, 5e-4, 2e-4, 1e-4])
+    weight_decay = hp.Float('weight_decay', min_value=1e-5, max_value=1e-3, sampling='LOG')
+
+    # 序列输入分支 - 增强版
     sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), name='sequence_input')
-    seq_embedding = Embedding(input_dim=VOCAB_SIZE, 
-                              output_dim=embedding_dim_seq, 
-                              input_length=MAX_SEQUENCE_LENGTH, 
+    seq_embedding = Embedding(input_dim=VOCAB_SIZE,
+                              output_dim=embedding_dim_seq,
+                              input_length=MAX_SEQUENCE_LENGTH,
                               name='sequence_embedding')(sequence_input)
-    lstm_out = Bidirectional(LSTM(lstm_units, dropout=dropout_rate, recurrent_dropout=dropout_rate), 
-                             name='bidirectional_lstm')(seq_embedding)
 
-    # 全局特征输入分支 (假设全局特征维度固定为28)
-    # 在实际调用时，global_feature_dim 应从数据中获取 X_train_global.shape[1]
-    global_features_input = Input(shape=(28,), name='global_features_input') # 固定为28
+    # 第一层双向LSTM
+    lstm_out = Bidirectional(LSTM(lstm_units,
+                                  dropout=dropout_rate,
+                                  recurrent_dropout=recurrent_dropout_rate,
+                                  return_sequences=use_stacked_lstm),
+                             name='bidirectional_lstm_1')(seq_embedding)
+
+    # 可选的第二层LSTM
+    if use_stacked_lstm:
+        lstm_units_2_val = hp.Choice('lstm_units_2', values=[64, 128, 256])
+        lstm_out = Bidirectional(LSTM(lstm_units_2_val,
+                                      dropout=dropout_rate,
+                                      recurrent_dropout=recurrent_dropout_rate),
+                                 name='bidirectional_lstm_2')(lstm_out)
+
+    # 全局特征输入分支 - 增强版多层MLP
+    global_features_input = Input(shape=(28,), name='global_features_input')
     x_global = global_features_input
-    
+
+    # 第一层MLP
     x_global = Dense(mlp_dense1_units, name='mlp_dense_1')(x_global)
     x_global = LeakyReLU(alpha=0.01)(x_global)
     x_global = BatchNormalization(name='mlp_bn_1')(x_global)
     x_global = Dropout(dropout_rate, name='mlp_dropout_1')(x_global)
 
+    # 第二层MLP（可选）
     if include_mlp_dense2:
         x_global = Dense(mlp_dense2_units, name='mlp_dense_2')(x_global)
         x_global = LeakyReLU(alpha=0.01)(x_global)
         x_global = BatchNormalization(name='mlp_bn_2')(x_global)
         x_global = Dropout(dropout_rate, name='mlp_dropout_2')(x_global)
+
+    # 第三层MLP（可选）
+    if include_mlp_dense3:
+        mlp_dense3_units_val = hp.Int('mlp_dense3_units', min_value=16, max_value=128, step=16)
+        x_global = Dense(mlp_dense3_units_val, name='mlp_dense_3')(x_global)
+        x_global = LeakyReLU(alpha=0.01)(x_global)
+        x_global = BatchNormalization(name='mlp_bn_3')(x_global)
+        x_global = Dropout(dropout_rate, name='mlp_dropout_3')(x_global)
+
     mlp_out = x_global
 
     # 融合两个分支
     concatenated_features = Concatenate(name='concatenate_branches')([lstm_out, mlp_out])
-    
-    # 分类头
-    fused_dense = Dense(fused_dense_units, name='fused_dense_1')(concatenated_features)
+
+    # 增强的分类头 - 多层融合
+    fused_dense = Dense(fused_dense1_units, name='fused_dense_1')(concatenated_features)
     fused_dense = LeakyReLU(alpha=0.01)(fused_dense)
-    fused_dropout = Dropout(dropout_rate, name='fused_dropout_1')(fused_dense)
-    
-    output_logits = Dense(1, name='output_logits')(fused_dropout)
+    fused_dense = BatchNormalization(name='fused_bn_1')(fused_dense)
+    fused_dense = Dropout(dropout_rate, name='fused_dropout_1')(fused_dense)
+
+    # 可选的第二层融合
+    if include_fused_dense2:
+        fused_dense2_units_val = hp.Int('fused_dense2_units', min_value=32, max_value=256, step=32)
+        fused_dense = Dense(fused_dense2_units_val, name='fused_dense_2')(fused_dense)
+        fused_dense = LeakyReLU(alpha=0.01)(fused_dense)
+        fused_dense = BatchNormalization(name='fused_bn_2')(fused_dense)
+        fused_dense = Dropout(dropout_rate, name='fused_dropout_2')(fused_dense)
+
+    output_logits = Dense(1, name='output_logits')(fused_dense)
 
     model = Model(inputs=[sequence_input, global_features_input], outputs=output_logits, name='hybrid_hyper_model')
-    
-    optimizer = AdamW(learning_rate=learning_rate)
+
+    # 高性能优化器配置
+    optimizer = AdamW(learning_rate=learning_rate, weight_decay=weight_decay)
     loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True)
     metrics_list = [
-        'accuracy', 
+        'accuracy',
         tf.keras.metrics.AUC(name='auc'),
         tf.keras.metrics.Precision(name='precision'),
         tf.keras.metrics.Recall(name='recall')
@@ -237,29 +283,30 @@ if __name__ == '__main__':
 
         logger.info("数据加载成功，准备进行超参数搜索。")
 
-        # 定义Tuner (使用Hyperband)
+        # 定义高性能Tuner (使用Hyperband)
         tuner = kt.Hyperband(
             hypermodel=build_hyper_model,
             objective=kt.Objective('val_auc', direction='max'), # 优化目标
-            max_epochs=30,          # 单个模型配置最多训练的epoch数
+            max_epochs=50,          # 增加单个模型配置最多训练的epoch数
             factor=3,               # Hyperband的缩减因子
-            hyperband_iterations=2, # Hyperband算法的迭代次数 (迭代次数越多，搜索越彻底)
+            hyperband_iterations=3, # 增加Hyperband算法的迭代次数 (更彻底的搜索)
             directory=TUNER_DIR,
             project_name=PROJECT_NAME,
             overwrite=False # 如果目录已存在，则覆盖
         )
 
-        # 定义早停回调 (用于tuner.search中的每个trial)
-        search_early_stopping = EarlyStopping(monitor='val_auc', patience=5, mode='max', verbose=1)
+        # 定义高性能早停回调 (用于tuner.search中的每个trial)
+        search_early_stopping = EarlyStopping(monitor='val_auc', patience=8, mode='max', verbose=1, restore_best_weights=True)
+        search_reduce_lr = ReduceLROnPlateau(monitor='val_auc', factor=0.5, patience=4, min_lr=1e-6, mode='max', verbose=1)
 
-        logger.info("开始超参数搜索 (tuner.search)...")
+        logger.info("开始高性能超参数搜索 (tuner.search)...")
         tuner.search(
-            [X_train_search_seq, X_train_search_global], 
+            [X_train_search_seq, X_train_search_global],
             y_train_search,
-            epochs=50, # 每个trial的训练轮数上限 (Hyperband内部会管理实际轮数)
+            epochs=80, # 增加每个trial的训练轮数上限
             validation_data=([X_val_search_seq, X_val_search_global], y_val_search),
-            callbacks=[search_early_stopping],
-            batch_size=64 # 可以在hp中定义，这里为简化先固定
+            callbacks=[search_early_stopping, search_reduce_lr],
+            batch_size=128 # 增加batch_size以充分利用服务器性能
         )
 
         logger.info("超参数搜索完成。")
@@ -273,18 +320,33 @@ if __name__ == '__main__':
         logger.info("使用最佳超参数在完整训练数据上重新训练模型...")
         final_model = tuner.hypermodel.build(best_hps)
         
-        # 为最终训练定义回调
-        final_model_checkpoint = ModelCheckpoint(HYBRID_MODEL_PATH_TEMPLATE, monitor='val_auc', save_best_only=True, mode='max', verbose=1)
-        final_early_stopping = EarlyStopping(monitor='val_auc', patience=10, verbose=1, mode='max', restore_best_weights=True) # 更长的patience
-        final_reduce_lr = ReduceLROnPlateau(monitor='val_auc', factor=0.2, patience=5, min_lr=1e-6, mode='max', verbose=1)
+        # 为最终训练定义高性能回调
+        final_model_checkpoint = ModelCheckpoint(HYBRID_MODEL_PATH_TEMPLATE, monitor='val_auc', save_best_only=True, mode='max', verbose=1, save_weights_only=False)
+        final_early_stopping = EarlyStopping(monitor='val_auc', patience=15, verbose=1, mode='max', restore_best_weights=True) # 更长的patience以充分训练
+        final_reduce_lr = ReduceLROnPlateau(monitor='val_auc', factor=0.3, patience=6, min_lr=1e-7, mode='max', verbose=1)
+
+        # 添加余弦退火学习率调度器
+        initial_lr = best_hps.get('learning_rate')
+        def cosine_annealing_schedule(epoch, lr):
+            import math
+            if epoch < 10:
+                return lr
+            else:
+                return initial_lr * 0.5 * (1 + math.cos(math.pi * (epoch - 10) / 50))
+
+        cosine_scheduler = tf.keras.callbacks.LearningRateScheduler(cosine_annealing_schedule, verbose=1) if initial_lr else None
+
+        callbacks_list = [final_model_checkpoint, final_early_stopping, final_reduce_lr]
+        if cosine_scheduler:
+            callbacks_list.append(cosine_scheduler)
 
         history = final_model.fit(
             [X_train_full_seq, X_train_full_global],
             y_train_full,
-            epochs=100, # 最终模型训练更多轮数
-            batch_size=64, # 使用固定的batch_size，因为我们没有在Keras Tuner中搜索它
-            validation_data=([X_test_final_seq, X_test_final_global], y_test_final), # 使用最终测试集作为验证
-            callbacks=[final_model_checkpoint, final_early_stopping, final_reduce_lr],
+            epochs=200, # 大幅增加最终模型训练轮数
+            batch_size=128, # 增加batch_size以充分利用服务器性能
+            validation_data=([X_test_final_seq, X_test_final_global], y_test_final),
+            callbacks=callbacks_list,
             verbose=1
         )
         
