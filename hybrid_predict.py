@@ -13,7 +13,10 @@ import logging
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from tensorflow.keras.preprocessing.sequence import pad_sequences
+try:
+    from tensorflow.keras.preprocessing.sequence import pad_sequences
+except ImportError:
+    from tensorflow.keras.utils import pad_sequences
 from sklearn.preprocessing import StandardScaler
 from Bio import SeqIO
 from peptides import Peptide
@@ -30,7 +33,7 @@ VOCAB_DICT['<PAD>'] = 0
 VOCAB_DICT['<UNK>'] = 1
 VOCAB_SIZE = len(VOCAB_DICT)
 
-MAX_SEQUENCE_LENGTH = 32
+MAX_SEQUENCE_LENGTH = 128
 PAD_TOKEN_ID = VOCAB_DICT['<PAD>']
 UNK_TOKEN_ID = VOCAB_DICT['<UNK>']
 
@@ -113,14 +116,34 @@ def tokenize_and_pad_sequences(sequences, vocab_dict, max_len, pad_token_id, unk
     )
     return padded_sequences
 
+def focal_loss(alpha=0.25, gamma=2.0):
+    """定义Focal Loss函数（用于模型加载）"""
+    def focal_loss_fixed(y_true, y_pred):
+        # 将logits转换为概率
+        y_pred_sigmoid = tf.nn.sigmoid(y_pred)
+        # 计算focal loss
+        ce_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true, logits=y_pred)
+        p_t = tf.where(tf.equal(y_true, 1), y_pred_sigmoid, 1 - y_pred_sigmoid)
+        alpha_t = tf.where(tf.equal(y_true, 1), alpha, 1 - alpha)
+        focal_weight = alpha_t * tf.pow(1 - p_t, gamma)
+        focal_loss = focal_weight * ce_loss
+        return tf.reduce_mean(focal_loss)
+    return focal_loss_fixed
+
 def load_keras_model(model_path):
     """加载训练好的Keras混合模型"""
     if not os.path.exists(model_path):
         logger.error(f"模型文件未找到: {model_path}")
         raise FileNotFoundError(f"模型文件未找到: {model_path}")
-    
+
     try:
-        model = tf.keras.models.load_model(model_path)
+        # 定义自定义对象
+        custom_objects = {
+            'focal_loss_fixed': focal_loss(alpha=0.4, gamma=2.0)
+        }
+
+        # 使用自定义对象加载模型
+        model = tf.keras.models.load_model(model_path, custom_objects=custom_objects)
         logger.info(f"从 {model_path} 成功加载Keras模型")
         return model
     except Exception as e:
