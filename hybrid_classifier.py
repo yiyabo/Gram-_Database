@@ -369,10 +369,31 @@ if __name__ == '__main__':
         y_pred_probs_sigmoid = tf.sigmoid(y_pred_logits).numpy()
         y_pred_classes_final = (y_pred_probs_sigmoid > 0.5).astype(int)
 
-        from sklearn.metrics import f1_score as sklearn_f1_score
+        from sklearn.metrics import f1_score as sklearn_f1_score, confusion_matrix, matthews_corrcoef
+        
+        # 计算F1 Score
         f1 = sklearn_f1_score(y_test_final, y_pred_classes_final)
         logger.info(f"最终测试集 F1 Score (手动计算): {f1:.4f}")
         results_dict['f1_score_manual'] = f1
+        
+        # 计算Confusion Matrix
+        cm = confusion_matrix(y_test_final, y_pred_classes_final)
+        tn, fp, fn, tp = cm.ravel()
+        
+        # 计算Specificity
+        specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+        logger.info(f"最终测试集 Specificity: {specificity:.4f}")
+        results_dict['specificity'] = specificity
+        
+        # 计算MCC
+        mcc = matthews_corrcoef(y_test_final, y_pred_classes_final)
+        logger.info(f"最终测试集 MCC: {mcc:.4f}")
+        results_dict['mcc'] = mcc
+        
+        # 重命名指标以匹配baseline格式
+        sensitivity = results_dict.get('recall', 0)  # Recall就是Sensitivity
+        logger.info(f"最终测试集 Sensitivity (Recall): {sensitivity:.4f}")
+        results_dict['sensitivity'] = sensitivity
 
         eval_results_path = os.path.join(MODEL_OUTPUT_DIR, 'hybrid_classifier_tuned_eval_results.txt')
         with open(eval_results_path, 'w') as f:
