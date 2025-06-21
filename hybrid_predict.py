@@ -13,6 +13,8 @@ import logging
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Embedding, LSTM, Bidirectional, Dense, Concatenate, Dropout, BatchNormalization, LeakyReLU
 try:
     from tensorflow.keras.preprocessing.sequence import pad_sequences
 except ImportError:
@@ -36,6 +38,102 @@ VOCAB_SIZE = len(VOCAB_DICT)
 MAX_SEQUENCE_LENGTH = 128
 PAD_TOKEN_ID = VOCAB_DICT['<PAD>']
 UNK_TOKEN_ID = VOCAB_DICT['<UNK>']
+
+# 最优超参数 - 基于消融实验最佳配置
+BEST_HYPERPARAMS = {
+    # 基础架构参数 (继承原版V1的优秀架构)
+    'embedding_dim_seq': 256,
+    'lstm_units': 512,
+    'mlp_dense1_units': 384,
+    'mlp_dense2_units': 160,
+    'include_mlp_dense2': True,
+    'include_mlp_dense3': True,
+    'mlp_dense3_units': 16,
+    'fused_dense1_units': 128,
+    'include_fused_dense2': True,
+    'fused_dense2_units': 224,
+    
+    # 正则化参数 (适中设置)
+    'dropout_rate': 0.3,
+    'recurrent_dropout_rate': 0.2,
+    
+    # 优化器参数
+    'learning_rate': 0.001,
+    'weight_decay': 5e-5,
+    
+    # 关键优化：仅使用Label Smoothing
+    'use_self_attention': False,  # 不使用attention
+    'use_focal_loss': False,      # 不使用focal loss
+    'label_smoothing': 0.15       # 仅使用label smoothing
+}
+
+def build_final_model(hyperparams):
+    """构建最优模型 - 基于消融实验结果"""
+    
+    # 序列输入分支
+    sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), name='sequence_input')
+    seq_embedding = Embedding(
+        input_dim=VOCAB_SIZE,
+        output_dim=hyperparams['embedding_dim_seq'],
+        input_length=MAX_SEQUENCE_LENGTH,
+        name='sequence_embedding'
+    )(sequence_input)
+
+    # LSTM分支 (不使用attention，所以return_sequences=False)
+    lstm_out = Bidirectional(LSTM(
+        hyperparams['lstm_units'],
+        dropout=hyperparams['dropout_rate'],
+        recurrent_dropout=hyperparams['recurrent_dropout_rate'],
+        return_sequences=False
+    ), name='bidirectional_lstm')(seq_embedding)
+
+    # 全局特征输入分支
+    global_features_input = Input(shape=(28,), name='global_features_input')
+    x_global = global_features_input
+    
+    # MLP第一层
+    x_global = Dense(hyperparams['mlp_dense1_units'], name='mlp_dense_1')(x_global)
+    x_global = LeakyReLU(alpha=0.01)(x_global)
+    x_global = BatchNormalization(name='mlp_bn_1')(x_global)
+    x_global = Dropout(hyperparams['dropout_rate'], name='mlp_dropout_1')(x_global)
+    
+    # MLP第二层
+    if hyperparams['include_mlp_dense2']:
+        x_global = Dense(hyperparams['mlp_dense2_units'], name='mlp_dense_2')(x_global)
+        x_global = LeakyReLU(alpha=0.01)(x_global)
+        x_global = BatchNormalization(name='mlp_bn_2')(x_global)
+        x_global = Dropout(hyperparams['dropout_rate'], name='mlp_dropout_2')(x_global)
+
+    # MLP第三层
+    if hyperparams['include_mlp_dense3']:
+        x_global = Dense(hyperparams['mlp_dense3_units'], name='mlp_dense_3')(x_global)
+        x_global = LeakyReLU(alpha=0.01)(x_global)
+        x_global = BatchNormalization(name='mlp_bn_3')(x_global)
+        x_global = Dropout(hyperparams['dropout_rate'], name='mlp_dropout_3')(x_global)
+
+    # 融合两个分支
+    concatenated_features = Concatenate(name='concatenate_branches')([lstm_out, x_global])
+
+    # 融合层
+    fused_dense = Dense(hyperparams['fused_dense1_units'], name='fused_dense_1')(concatenated_features)
+    fused_dense = LeakyReLU(alpha=0.01)(fused_dense)
+    fused_dense = BatchNormalization(name='fused_bn_1')(fused_dense)
+    fused_dense = Dropout(hyperparams['dropout_rate'], name='fused_dropout_1')(fused_dense)
+
+    # 第二层融合
+    if hyperparams['include_fused_dense2']:
+        fused_dense = Dense(hyperparams['fused_dense2_units'], name='fused_dense_2')(fused_dense)
+        fused_dense = LeakyReLU(alpha=0.01)(fused_dense)
+        fused_dense = BatchNormalization(name='fused_bn_2')(fused_dense)
+        fused_dense = Dropout(hyperparams['dropout_rate'], name='fused_dropout_2')(fused_dense)
+
+    output_logits = Dense(1, name='output_logits')(fused_dense)
+
+    model = Model(inputs=[sequence_input, global_features_input], outputs=output_logits, name='hybrid_v1_final')
+    
+    # 模型编译仅为加载权重所需，优化器和损失函数在预测时不会使用
+    model.compile()
+    return model
 
 def parse_fasta_for_prediction(fasta_file_path):
     """从FASTA文件中解析序列用于预测"""
@@ -69,7 +167,7 @@ def extract_single_sequence_features(sequence_string, feature_order_list):
         charge = pep.charge(pH=7.4)
         hydrophobicity = pep.hydrophobicity(scale="Eisenberg")
         
-        hm_window = min(11, length) 
+        hm_window = min(11, length)
         if length < 3: # peptides库对非常短的序列计算hydrophobic_moment可能有问题
             hydrophobic_moment_val = 0.0
         else:
@@ -107,47 +205,31 @@ def tokenize_and_pad_sequences(sequences, vocab_dict, max_len, pad_token_id, unk
         tokenized_sequences.append(tokens)
     
     padded_sequences = pad_sequences(
-        tokenized_sequences, 
-        maxlen=max_len, 
-        dtype='int32', 
-        padding='post', 
-        truncating='post', 
+        tokenized_sequences,
+        maxlen=max_len,
+        dtype='int32',
+        padding='post',
+        truncating='post',
         value=pad_token_id
     )
     return padded_sequences
 
-def focal_loss(alpha=0.25, gamma=2.0):
-    """定义Focal Loss函数（用于模型加载）"""
-    def focal_loss_fixed(y_true, y_pred):
-        # 将logits转换为概率
-        y_pred_sigmoid = tf.nn.sigmoid(y_pred)
-        # 计算focal loss
-        ce_loss = tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true, logits=y_pred)
-        p_t = tf.where(tf.equal(y_true, 1), y_pred_sigmoid, 1 - y_pred_sigmoid)
-        alpha_t = tf.where(tf.equal(y_true, 1), alpha, 1 - alpha)
-        focal_weight = alpha_t * tf.pow(1 - p_t, gamma)
-        focal_loss = focal_weight * ce_loss
-        return tf.reduce_mean(focal_loss)
-    return focal_loss_fixed
-
-def load_keras_model(model_path):
-    """加载训练好的Keras混合模型"""
-    if not os.path.exists(model_path):
-        logger.error(f"模型文件未找到: {model_path}")
-        raise FileNotFoundError(f"模型文件未找到: {model_path}")
+def load_final_model(weights_path):
+    """构建最终模型架构并从.h5文件加载权重"""
+    if not os.path.exists(weights_path):
+        logger.error(f"模型权重文件未找到: {weights_path}")
+        raise FileNotFoundError(f"模型权重文件未找到: {weights_path}")
 
     try:
-        # 定义自定义对象
-        custom_objects = {
-            'focal_loss_fixed': focal_loss(alpha=0.4, gamma=2.0)
-        }
-
-        # 使用自定义对象加载模型
-        model = tf.keras.models.load_model(model_path, custom_objects=custom_objects)
-        logger.info(f"从 {model_path} 成功加载Keras模型")
+        logger.info("构建最终模型架构...")
+        model = build_final_model(BEST_HYPERPARAMS)
+        
+        logger.info(f"从 {weights_path} 加载模型权重...")
+        model.load_weights(weights_path)
+        logger.info("成功加载模型权重。")
         return model
     except Exception as e:
-        logger.error(f"加载Keras模型时出错: {e}")
+        logger.error(f"加载模型权重时出错: {e}")
         raise
 
 def load_scaler(scaler_path):
@@ -186,11 +268,11 @@ def predict_with_hybrid_model(model, seq_data, global_features, threshold=0.5):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="使用训练好的混合模型（LSTM+MLP）预测肽序列的抗革兰氏阴性菌活性。")
-    parser.add_argument("--model_path", type=str, default="./model/Best Hybrid Classifier.keras",
-                        help="训练好的Keras混合模型文件路径 (.keras)。")
+    parser.add_argument("--model_path", type=str, default="./model/best_weights.h5",
+                        help="训练好的模型权重文件路径 (.h5)。")
     parser.add_argument("--fasta_file", type=str, required=True,
                         help="用于预测的输入FASTA文件路径。")
-    parser.add_argument("--scaler_path", type=str, default="./model/hybrid_model_scaler.pkl",
+    parser.add_argument("--scaler_path", type=str, default="./model/scaler.pkl",
                         help="保存的scikit-learn scaler对象路径 (.pkl)，用于全局特征标准化。")
     parser.add_argument("--output_file", type=str, default="./predictions/hybrid_model_predictions.txt",
                         help="保存预测结果的路径。")
@@ -203,7 +285,7 @@ if __name__ == "__main__":
 
     # --- 加载模型 ---
     try:
-        hybrid_model = load_keras_model(args.model_path)
+        hybrid_model = load_final_model(args.model_path)
     except Exception as e:
         logger.critical(f"无法加载模型，脚本终止: {e}")
         exit(1)

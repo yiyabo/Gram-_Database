@@ -66,3 +66,6 @@ gram_predictor/models/*.keras
 *.pt
 *.pth
 gram_predictor/charts/*.png
+
+# Prediction output files
+predictions/
