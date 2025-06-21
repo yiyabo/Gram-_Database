@@ -20,11 +20,13 @@ import numpy as np
 from io import StringIO, BytesIO
 import statistics
 from Bio import SeqIO
-from peptides import Peptide 
+from peptides import Peptide
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
-from tensorflow.keras.preprocessing.sequence import pad_sequences #type: ignore
+from keras.preprocessing.sequence import pad_sequences #type: ignore
+from keras.models import Model
+from keras.layers import Input, Embedding, LSTM, Bidirectional, Dense, Concatenate, Dropout, BatchNormalization, LeakyReLU
 from collections import Counter
 import pickle
 import traceback # For detailed error logging
@@ -59,9 +61,104 @@ VOCAB_DICT['<PAD>'] = 0
 VOCAB_DICT['<UNK>'] = 1
 VOCAB_SIZE = len(VOCAB_DICT)
 
-MAX_SEQUENCE_LENGTH = 32 
+MAX_SEQUENCE_LENGTH = 128
 PAD_TOKEN_ID = VOCAB_DICT['<PAD>']
 UNK_TOKEN_ID = VOCAB_DICT['<UNK>']
+
+# 最优超参数 - 基于消融实验最佳配置
+BEST_HYPERPARAMS = {
+    # 基础架构参数 (继承原版V1的优秀架构)
+    'embedding_dim_seq': 256,
+    'lstm_units': 512,
+    'mlp_dense1_units': 384,
+    'mlp_dense2_units': 160,
+    'include_mlp_dense2': True,
+    'include_mlp_dense3': True,
+    'mlp_dense3_units': 16,
+    'fused_dense1_units': 128,
+    'include_fused_dense2': True,
+    'fused_dense2_units': 224,
+    
+    # 正则化参数 (适中设置)
+    'dropout_rate': 0.3,
+    'recurrent_dropout_rate': 0.2,
+    
+    # 优化器参数
+    'learning_rate': 0.001,
+    'weight_decay': 5e-5,
+    
+    # 关键优化：仅使用Label Smoothing
+    'use_self_attention': False,  # 不使用attention
+    'use_focal_loss': False,      # 不使用focal loss
+    'label_smoothing': 0.15       # 仅使用label smoothing
+}
+
+def build_final_model(hyperparams):
+    """构建最优模型 - 基于消融实验结果"""
+
+    # 序列输入分支
+    sequence_input = Input(shape=(MAX_SEQUENCE_LENGTH,), name='sequence_input')
+    seq_embedding = Embedding(
+        input_dim=VOCAB_SIZE,
+        output_dim=hyperparams['embedding_dim_seq'],
+        input_length=MAX_SEQUENCE_LENGTH,
+        name='sequence_embedding'
+    )(sequence_input)
+
+    # LSTM分支 (不使用attention，所以return_sequences=False)
+    lstm_out = Bidirectional(LSTM(
+        hyperparams['lstm_units'],
+        dropout=hyperparams['dropout_rate'],
+        recurrent_dropout=hyperparams['recurrent_dropout_rate'],
+        return_sequences=False
+    ), name='bidirectional_lstm')(seq_embedding)
+
+    # 全局特征输入分支
+    global_features_input = Input(shape=(28,), name='global_features_input')
+    x_global = global_features_input
+    
+    # MLP第一层
+    x_global = Dense(hyperparams['mlp_dense1_units'], name='mlp_dense_1')(x_global)
+    x_global = LeakyReLU(alpha=0.01)(x_global)
+    x_global = BatchNormalization(name='mlp_bn_1')(x_global)
+    x_global = Dropout(hyperparams['dropout_rate'], name='mlp_dropout_1')(x_global)
+    
+    # MLP第二层
+    if hyperparams['include_mlp_dense2']:
+        x_global = Dense(hyperparams['mlp_dense2_units'], name='mlp_dense_2')(x_global)
+        x_global = LeakyReLU(alpha=0.01)(x_global)
+        x_global = BatchNormalization(name='mlp_bn_2')(x_global)
+        x_global = Dropout(hyperparams['dropout_rate'], name='mlp_dropout_2')(x_global)
+
+    # MLP第三层
+    if hyperparams['include_mlp_dense3']:
+        x_global = Dense(hyperparams['mlp_dense3_units'], name='mlp_dense_3')(x_global)
+        x_global = LeakyReLU(alpha=0.01)(x_global)
+        x_global = BatchNormalization(name='mlp_bn_3')(x_global)
+        x_global = Dropout(hyperparams['dropout_rate'], name='mlp_dropout_3')(x_global)
+
+    # 融合两个分支
+    concatenated_features = Concatenate(name='concatenate_branches')([lstm_out, x_global])
+
+    # 融合层
+    fused_dense = Dense(hyperparams['fused_dense1_units'], name='fused_dense_1')(concatenated_features)
+    fused_dense = LeakyReLU(alpha=0.01)(fused_dense)
+    fused_dense = BatchNormalization(name='fused_bn_1')(fused_dense)
+    fused_dense = Dropout(hyperparams['dropout_rate'], name='fused_dropout_1')(fused_dense)
+
+    # 第二层融合
+    if hyperparams['include_fused_dense2']:
+        fused_dense = Dense(hyperparams['fused_dense2_units'], name='fused_dense_2')(fused_dense)
+        fused_dense = LeakyReLU(alpha=0.01)(fused_dense)
+        fused_dense = BatchNormalization(name='fused_bn_2')(fused_dense)
+        fused_dense = Dropout(hyperparams['dropout_rate'], name='fused_dropout_2')(fused_dense)
+
+    output_logits = Dense(1, name='output_logits')(fused_dense)
+
+    model = Model(inputs=[sequence_input, global_features_input], outputs=output_logits, name='hybrid_v1_final')
+    
+    model.compile()
+    return model
 
 def tokenize_and_pad_sequences_app(sequences, vocab_dict, max_len, pad_token_id, unk_token_id):
     """Converts a list of raw amino acid sequence strings to tokenized and padded integer ID sequences."""
@@ -83,18 +180,20 @@ def tokenize_and_pad_sequences_app(sequences, vocab_dict, max_len, pad_token_id,
 # --- End of copied/adapted section ---
 
 
-def load_keras_model(model_path):
-    """Loads a trained Keras model."""
-    print(f"Loading Keras model from {model_path}...")
+def load_final_model_with_weights(weights_path):
+    """Loads the model architecture and then loads weights from an .h5 file."""
+    print(f"Building final model architecture...")
     try:
-        model = tf.keras.models.load_model(model_path)
-        print("Keras model loaded successfully!")
+        model = build_final_model(BEST_HYPERPARAMS)
+        print(f"Loading model weights from {weights_path}...")
+        model.load_weights(weights_path)
+        print("Model weights loaded successfully!")
         return model
     except FileNotFoundError:
-        print(f"Error: Keras model file not found at {model_path}")
+        print(f"Error: Model weights file not found at {weights_path}")
         raise
     except Exception as e:
-        print(f"Unknown error occurred while loading Keras model: {e}")
+        print(f"Unknown error occurred while loading model weights: {e}")
         raise
 
 def load_app_scaler(scaler_path):
@@ -868,17 +967,17 @@ app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 # Global variables
 APP_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT_DIR = os.path.dirname(APP_ROOT_DIR)
-KERAS_MODEL_PATH = os.path.join(PROJECT_ROOT_DIR, 'model', 'hybrid_classifier_best_tuned.keras')
-SCALER_PATH_APP = os.path.join(PROJECT_ROOT_DIR, 'model', 'hybrid_model_scaler.pkl')
+KERAS_MODEL_PATH = os.path.join(PROJECT_ROOT_DIR, 'model', 'best_weights.h5')
+SCALER_PATH_APP = os.path.join(PROJECT_ROOT_DIR, 'model', 'scaler.pkl')
 
-keras_model_global = None 
-global_feature_scaler_app = None 
+keras_model_global = None
+global_feature_scaler_app = None
 
 def load_app_dependencies():
     """Loads the Keras model and scaler required by the app."""
     global keras_model_global, global_feature_scaler_app
     if keras_model_global is None:
-        keras_model_global = load_keras_model(KERAS_MODEL_PATH)
+        keras_model_global = load_final_model_with_weights(KERAS_MODEL_PATH)
     if global_feature_scaler_app is None:
         global_feature_scaler_app = load_app_scaler(SCALER_PATH_APP)
     print("Keras model and Scaler loaded for the app!")
