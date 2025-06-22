@@ -37,6 +37,7 @@ class ConditionalTrainer:
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.best_val_loss = float('inf')
+        self.current_epoch = 0 # 用于恢复训练
         self.output_dir = self.config.get("output_dir", "output/checkpoints")
         os.makedirs(self.output_dir, exist_ok=True)
         
@@ -173,12 +174,13 @@ class ConditionalTrainer:
 
     def train(self):
         """主训练循环"""
-        logger.info("🚀 开始训练...")
+        logger.info(f"🚀 开始训练，从 Epoch {self.current_epoch + 1} 开始...")
         
-        for epoch in range(self.config["epochs"]):
+        for epoch in range(self.current_epoch, self.config["epochs"]):
+            self.current_epoch = epoch # 更新当前epoch
             self.diffusion_model.model.train()
             
-            progress_bar = tqdm(self.train_loader, desc=f"Epoch {epoch+1}/{self.config['epochs']}")
+            progress_bar = tqdm(self.train_loader, desc=f"Epoch {epoch + 1}/{self.config['epochs']}")
             total_loss = 0.0
             
             for batch in progress_bar:
@@ -210,7 +212,7 @@ class ConditionalTrainer:
                 # 保存最佳模型
                 if val_loss < self.best_val_loss:
                     self.best_val_loss = val_loss
-                    self.save_checkpoint('best_model.pt')
+                    self.save_checkpoint(f'best_model_epoch_{epoch+1}.pt')
             
             # 定期保存最新模型
             if (epoch + 1) % self.config.get("save_interval", 5) == 0:
@@ -238,9 +240,16 @@ class ConditionalTrainer:
         checkpoint_path = os.path.join(self.output_dir, filename)
         
         # 只保存模型的state_dict
+        # 处理DataParallel的模型
+        model_state_dict = self.diffusion_model.model.module.state_dict() \
+            if isinstance(self.diffusion_model.model, torch.nn.DataParallel) \
+            else self.diffusion_model.model.state_dict()
+
         torch.save({
-            'model_state_dict': self.diffusion_model.model.state_dict(),
+            'epoch': self.current_epoch,
+            'model_state_dict': model_state_dict,
             'optimizer_state_dict': self.optimizer.state_dict(),
+            'lr_scheduler_state_dict': self.lr_scheduler.state_dict(),
             'best_val_loss': self.best_val_loss,
         }, checkpoint_path)
         
@@ -254,16 +263,29 @@ class ConditionalTrainer:
             return
             
         checkpoint = torch.load(checkpoint_path, map_location=self.device)
-        self.diffusion_model.model.load_state_dict(checkpoint['model_state_dict'])
+        
+        # 智能处理是否由DataParallel包装的模型
+        model_to_load = self.diffusion_model.model.module \
+            if isinstance(self.diffusion_model.model, torch.nn.DataParallel) \
+            else self.diffusion_model.model
+            
+        model_to_load.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        self.lr_scheduler.load_state_dict(checkpoint['lr_scheduler_state_dict'])
+        self.current_epoch = checkpoint.get('epoch', 0) + 1 # 从下一个epoch开始
         self.best_val_loss = checkpoint.get('best_val_loss', float('inf'))
         
-        logger.info(f"模型已从 {checkpoint_path} 加载。")
+        logger.info(f"✅ 检查点加载完成。将从 Epoch {self.current_epoch} 继续训练。")
 
 
 if __name__ == '__main__':
-    # 导入 random 以便在 __main__ 中使用
-    import random
+    # 导入 argparse 以便在 __main__ 中使用
+    import argparse
+
+    parser = argparse.ArgumentParser(description="条件扩散模型训练脚本")
+    parser.add_argument("--resume_from", type=str, default=None,
+                        help="从指定的检查点文件路径恢复训练。")
+    args = parser.parse_args()
 
     # 根据操作系统自动选择配置
     if sys.platform == "darwin":
@@ -306,7 +328,7 @@ if __name__ == '__main__':
             "num_references": 3,
             "batch_size": 16, # 针对4090D可以设置更大的batch size
             "learning_rate": 5e-5,
-            "epochs": 50,
+            "epochs": 200,
             "save_interval": 5,
         }
 
@@ -335,6 +357,11 @@ if __name__ == '__main__':
             
     # 运行训练器
     trainer = ConditionalTrainer(config)
+    
+    # 如果提供了恢复路径，则加载检查点
+    if args.resume_from:
+        trainer.load_checkpoint(args.resume_from)
+        
     trainer.train()
 
     # 以下的验证和清理逻辑只在本地测试时执行
