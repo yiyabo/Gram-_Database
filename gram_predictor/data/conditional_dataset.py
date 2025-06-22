@@ -12,6 +12,7 @@ import random
 from typing import List, Dict, Optional, Callable
 
 import logging
+import Levenshtein # 用于计算编辑距离
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -63,10 +64,9 @@ class ConditionalDataset(Dataset):
             # 随机策略不需要预计算
             pass
         elif self.pairing_strategy == 'similarity':
-            logger.info("正在为'similarity'策略进行预计算...")
-            # TODO: 实现基于相似度的预计算，例如计算两两之间的距离矩阵
-            # self.distance_matrix = self._compute_distance_matrix()
-            raise NotImplementedError("'similarity'策略尚未实现。")
+            # 我们采用动态计算的方式，以节省内存，所以这里也不需要预计算。
+            logger.info("使用基于'similarity'的动态配对策略。")
+            pass
         elif self.pairing_strategy == 'cluster':
             logger.info("正在为'cluster'策略进行预计算...")
             # TODO: 实现基于聚类的预计算，例如运行CD-HIT或MMseqs2
@@ -121,9 +121,25 @@ class ConditionalDataset(Dataset):
         return [self.sequences[i] for i in reference_indices]
 
     def _get_similarity_references(self, target_idx: int) -> List[str]:
-        """获取基于相似度的参考序列。"""
-        # 这是需要实现的占位符
-        raise NotImplementedError("'similarity'策略的采样尚未实现。")
+        """获取基于Levenshtein距离的最相似的参考序列。"""
+        target_seq = self.sequences[target_idx]
+        
+        distances = []
+        for i, seq in enumerate(self.sequences):
+            if i == target_idx:
+                continue
+            # 计算归一化的Levenshtein距离，使其不受序列长度影响
+            dist = Levenshtein.distance(target_seq, seq) / max(len(target_seq), len(seq))
+            distances.append((dist, i))
+            
+        # 按距离从小到大排序
+        distances.sort(key=lambda x: x[0])
+        
+        # 获取最近的 K 个序列的索引
+        num_to_sample = min(self.num_references, len(distances))
+        reference_indices = [idx for dist, idx in distances[:num_to_sample]]
+        
+        return [self.sequences[i] for i in reference_indices]
 
     def _get_cluster_references(self, target_idx: int) -> List[str]:
         """获取基于聚类的参考序列。"""
@@ -188,15 +204,41 @@ if __name__ == '__main__':
     except Exception as e:
         logger.error(f"❌ 'random' 策略测试失败: {e}")
 
-    # 3. 测试未实现的策略
-    logger.info("\n--- 测试未实现的策略 ---")
+    # 3. 测试相似度配对策略
+    logger.info("\n--- 测试 'similarity' 策略 ---")
     try:
-        ConditionalDataset(sequences, pairing_strategy='similarity')
-    except NotImplementedError:
-        logger.info("✅ 'similarity' 策略按预期抛出 NotImplementedError。")
-    except Exception as e:
-        logger.error(f"❌ 'similarity' 策略测试异常: {e}")
+        # 创建一组距离可预测的序列
+        sim_sequences = [
+            "ABCDE",  # 目标
+            "ABCDG",  # dist=1
+            "ABCEG",  # dist=2
+            "AXCYG",  # dist=3
+            "XXXXX",  # dist=5
+        ]
+        similarity_dataset = ConditionalDataset(
+            sim_sequences,
+            pairing_strategy='similarity',
+            num_references=2
+        )
         
+        # 获取第一个序列 ("ABCDE") 的样本
+        sample_sim = similarity_dataset[0]
+        logger.info(f"相似度配对样本: {sample_sim}")
+        
+        # 预期的参考序列应该是 "ABCDG" 和 "ABCEG"
+        expected_refs = ["ABCDG", "ABCEG"]
+        assert len(sample_sim['reference_sequences']) == 2
+        assert set(sample_sim['reference_sequences']) == set(expected_refs)
+        logger.info("✅ 'similarity' 策略测试通过！")
+        
+    except ImportError:
+        logger.warning("⚠️  'similarity' 策略测试跳过，因为未安装 'python-Levenshtein' 库。")
+        logger.warning("请运行: pip install python-Levenshtein")
+    except Exception as e:
+        logger.error(f"❌ 'similarity' 策略测试失败: {e}", exc_info=True)
+
+    # 4. 测试未实现的策略
+    logger.info("\n--- 测试 'cluster' 策略 ---")
     try:
         ConditionalDataset(sequences, pairing_strategy='cluster')
     except NotImplementedError:

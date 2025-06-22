@@ -302,7 +302,7 @@ if __name__ == '__main__':
             ],
             "val_ratio": 0.1,
             "output_dir": "checkpoints_650M",
-            "pairing_strategy": "random", # 后续可以改为更高级的策略
+            "pairing_strategy": "similarity", # 使用我们新实现的相似度配对
             "num_references": 3,
             "batch_size": 16, # 针对4090D可以设置更大的batch size
             "learning_rate": 5e-5,
