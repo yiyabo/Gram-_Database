@@ -14,6 +14,12 @@ import sys
 from typing import List, Dict
 from tqdm import tqdm
 
+# 解决模块导入问题: 将项目根目录添加到sys.path
+# 这使得无论从哪里运行脚本，都能找到gram_predictor等顶级包
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 # 导入我们创建的组件
 from gram_predictor.data.conditional_dataset import ConditionalDataset, load_sequences_from_file
 from gram_predictor.diffusion_models.conditional_d3pm import ConditionalD3PMUNet, ConditionalD3PMDiffusion, D3PMScheduler
