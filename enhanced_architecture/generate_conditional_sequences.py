@@ -92,8 +92,9 @@ def run_predictor(fasta_file, output_file):
     """调用hybrid_predict.py脚本进行预测"""
     logger.info(f"正在调用 hybrid_predict.py 对 {fasta_file} 进行预测...")
     
+    # 使用 sys.executable 来确保使用与当前脚本相同的Python解释器和环境
     command = [
-        "conda", "run", "-n", "drug", "python", "hybrid_predict.py",
+        sys.executable, "hybrid_predict.py",
         "--fasta_file", fasta_file,
         "--output_file", output_file
     ]
