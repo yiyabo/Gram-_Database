@@ -210,6 +210,11 @@ class ConditionalD3PMDiffusion:
         self.device = device
         
         self.model.to(device)
+        # 确保调度器的张量也在正确的设备上
+        if hasattr(self.scheduler, 'alphas_cumprod'):
+            self.scheduler.alphas_cumprod = self.scheduler.alphas_cumprod.to(self.device)
+        if hasattr(self.scheduler, 'Qt'):
+            self.scheduler.Qt = self.scheduler.Qt.to(self.device)
 
     def training_loss(self, x_start: torch.Tensor,
                       condition_features: Optional[torch.Tensor] = None) -> torch.Tensor:
