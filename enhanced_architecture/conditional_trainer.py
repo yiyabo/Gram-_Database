@@ -255,9 +255,9 @@ class ConditionalTrainer:
         
         logger.info(f"模型已保存到: {checkpoint_path}")
 
-    def load_checkpoint(self, filename: str):
+    def load_checkpoint(self, checkpoint_path: str):
         """加载模型检查点"""
-        checkpoint_path = os.path.join(self.output_dir, filename)
+        # 直接使用用户提供的完整路径
         if not os.path.exists(checkpoint_path):
             logger.warning(f"检查点文件未找到: {checkpoint_path}")
             return
