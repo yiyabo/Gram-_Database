@@ -364,6 +364,7 @@ if __name__ == '__main__':
             if os.path.exists("mock_both.txt"):
                 os.remove("mock_both.txt")
             
+            # 确保只在本地测试时才清理输出目录
             if os.path.exists(config["output_dir"]):
                 shutil.rmtree(config["output_dir"])
             logger.info("已清理所有本地测试的模拟文件和目录。")
