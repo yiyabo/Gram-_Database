@@ -334,32 +334,36 @@ if __name__ == '__main__':
                 sys.exit(1) # 退出脚本
             
     # 运行训练器
-    try:
-        trainer = ConditionalTrainer(config)
-        trainer.train()
-        
-        # 验证检查点是否已创建
-        assert os.path.exists(os.path.join(config["output_dir"], "best_model.pt"))
-        assert os.path.exists(os.path.join(config["output_dir"], "checkpoint_epoch_2.pt"))
-        logger.info("✅ 检查点文件创建成功！")
-        
-        # 测试加载功能
-        logger.info("测试加载检查点...")
-        new_trainer = ConditionalTrainer(config)
-        new_trainer.load_checkpoint("best_model.pt")
-        logger.info("✅ 检查点加载成功！")
-        
-    except Exception as e:
-        logger.error(f"❌ 训练器测试失败: {e}", exc_info=True)
-    finally:
-        # 清理模拟文件和目录
-        import shutil
-        if sys.platform == "darwin":
+    trainer = ConditionalTrainer(config)
+    trainer.train()
+
+    # 以下的验证和清理逻辑只在本地测试时执行
+    if sys.platform == "darwin":
+        try:
+            logger.info("开始执行本地测试验证...")
+            # 验证检查点是否已创建
+            assert os.path.exists(os.path.join(config["output_dir"], "best_model.pt"))
+            # 本地测试运行2个epoch，save_interval是1，所以epoch_1和epoch_2都应该存在
+            assert os.path.exists(os.path.join(config["output_dir"], "checkpoint_epoch_1.pt"))
+            assert os.path.exists(os.path.join(config["output_dir"], "checkpoint_epoch_2.pt"))
+            logger.info("✅ 检查点文件创建成功！")
+            
+            # 测试加载功能
+            logger.info("测试加载检查点...")
+            new_trainer = ConditionalTrainer(config)
+            new_trainer.load_checkpoint("best_model.pt")
+            logger.info("✅ 检查点加载成功！")
+            
+        except Exception as e:
+            logger.error(f"❌ 本地测试验证失败: {e}", exc_info=True)
+        finally:
+            # 清理模拟文件和目录
+            import shutil
             if os.path.exists("mock_neg_only.txt"):
                 os.remove("mock_neg_only.txt")
             if os.path.exists("mock_both.txt"):
                 os.remove("mock_both.txt")
-        
-        if os.path.exists(config["output_dir"]):
-            shutil.rmtree(config["output_dir"])
-        logger.info("已清理所有模拟文件和目录。")
+            
+            if os.path.exists(config["output_dir"]):
+                shutil.rmtree(config["output_dir"])
+            logger.info("已清理所有本地测试的模拟文件和目录。")
