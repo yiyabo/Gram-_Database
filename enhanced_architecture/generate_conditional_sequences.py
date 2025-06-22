@@ -122,6 +122,10 @@ def main():
                         help="用于条件的参考序列数量。")
     parser.add_argument("--guidance_scale", type=float, default=7.5,
                         help="Classifier-Free Guidance的指导强度。")
+    parser.add_argument("--min_len", type=int, default=28,
+                        help="生成的序列的最小长度。")
+    parser.add_argument("--max_len", type=int, default=40,
+                        help="生成的序列的最大长度。")
     parser.add_argument("--output_fasta", type=str, default="generated_peptides.fasta",
                         help="保存生成的序列的FASTA文件。")
     parser.add_argument("--prediction_output", type=str, default="predictions/generated_peptides_predictions.txt",
@@ -140,7 +144,7 @@ def main():
         "hidden_dim": 512,
         "num_layers": 8,
         "num_timesteps": 1000,
-        "max_seq_len": 100,
+        "max_seq_len": args.max_len, # 使用参数中的最大长度
     }
 
     # --- 2. 加载模型和特征提取器 ---
@@ -170,16 +174,26 @@ def main():
     final_condition = final_condition.repeat(args.num_sequences, 1)
 
     # --- 4. 生成序列 ---
-    logger.info(f"正在生成 {args.num_sequences} 条序列...")
+    logger.info(f"正在生成 {args.num_sequences} 条长度在 {args.min_len}-{args.max_len} 之间的序列...")
+    # 我们先生成最大长度的序列，然后进行截断
     generated_tokens = diffusion_model.sample(
         batch_size=args.num_sequences,
-        seq_len=config["max_seq_len"],
+        seq_len=args.max_len,
         condition_features=final_condition,
         guidance_scale=args.guidance_scale
     )
     
-    generated_sequences = [tokens_to_sequence(tokens) for tokens in generated_tokens]
-    logger.info("✅ 序列生成完成。")
+    # 将token转换为序列，并进行随机长度截断
+    generated_sequences = []
+    for tokens in generated_tokens:
+        full_sequence = tokens_to_sequence(tokens)
+        # 随机选择一个长度
+        target_len = random.randint(args.min_len, args.max_len)
+        # 截断
+        truncated_sequence = full_sequence[:target_len]
+        generated_sequences.append(truncated_sequence)
+        
+    logger.info("✅ 序列生成和随机长度截断完成。")
     for i, seq in enumerate(generated_sequences[:5]):
         logger.info(f"  样本 {i+1}: {seq}")
 
