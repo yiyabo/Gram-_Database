@@ -104,8 +104,9 @@ class ConditionalESM2FeatureExtractor(nn.Module):
                 )
         
         # === 层融合机制 ===
+        fused_input_dim = len(use_layers) * (condition_dim // len(use_layers))
         self.layer_fusion = nn.Sequential(
-            nn.Linear(condition_dim, condition_dim * 2),
+            nn.Linear(fused_input_dim, condition_dim * 2),
             nn.LayerNorm(condition_dim * 2),
             nn.GELU(),
             nn.Dropout(0.1),
