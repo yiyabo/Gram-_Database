@@ -8,6 +8,7 @@ import os
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
+import random
 import logging
 import sys
 from typing import List, Dict
@@ -65,35 +66,53 @@ class ConditionalTrainer:
             self.diffusion_model.model = torch.nn.DataParallel(self.diffusion_model.model)
         
         # 3. 数据集和数据加载器
-        sequences = load_sequences_from_file(self.config["data_path"])
-        dataset = ConditionalDataset(
-            sequences,
+        # 根据新的逻辑，加载多个数据文件并合并
+        all_sequences = []
+        for file_path in self.config["data_files"]:
+            all_sequences.extend(load_sequences_from_file(file_path))
+        
+        # 去重并打乱
+        unique_sequences = sorted(list(set(all_sequences)))
+        random.shuffle(unique_sequences)
+        logger.info(f"从 {len(self.config['data_files'])} 个文件加载了 {len(unique_sequences)} 条独立序列。")
+
+        # 将整个数据集分割为训练集和验证集
+        total_size = len(unique_sequences)
+        val_ratio = self.config.get("val_ratio", 0.1)
+        val_size = int(total_size * val_ratio)
+        # 确保在样本量很少时，验证集至少有一个样本
+        if total_size > 1 and val_size == 0:
+            val_size = 1
+        train_size = total_size - val_size
+        
+        train_sequences = unique_sequences[:train_size]
+        val_sequences = unique_sequences[train_size:]
+        
+        logger.info(f"数据集分割 -> 训练集: {len(train_sequences)}, 验证集: {len(val_sequences)}")
+
+        train_dataset = ConditionalDataset(
+            train_sequences,
             pairing_strategy=self.config.get("pairing_strategy", "random"),
             num_references=self.config.get("num_references", 1)
         )
         self.train_loader = DataLoader(
-            dataset,
+            train_dataset,
             batch_size=self.config["batch_size"],
             shuffle=True,
             collate_fn=self.collate_fn
         )
         
-        # 初始化验证数据加载器 (如果提供了验证数据)
-        if self.config.get("val_data_path"):
-            val_sequences = load_sequences_from_file(self.config["val_data_path"])
-            val_dataset = ConditionalDataset(
-                val_sequences,
-                pairing_strategy=self.config.get("pairing_strategy", "random"),
-                num_references=self.config.get("num_references", 1)
-            )
-            self.val_loader = DataLoader(
-                val_dataset,
-                batch_size=self.config["batch_size"],
-                shuffle=False,
-                collate_fn=self.collate_fn
-            )
-        else:
-            self.val_loader = None
+        val_dataset = ConditionalDataset(
+            val_sequences,
+            pairing_strategy=self.config.get("pairing_strategy", "random"),
+            num_references=self.config.get("num_references", 1)
+        )
+        self.val_loader = DataLoader(
+            val_dataset,
+            batch_size=self.config["batch_size"],
+            shuffle=False,
+            collate_fn=self.collate_fn
+        )
         
         # 4. 优化器和学习率调度器
         self.optimizer = optim.AdamW(
@@ -237,6 +256,9 @@ class ConditionalTrainer:
 
 
 if __name__ == '__main__':
+    # 导入 random 以便在 __main__ 中使用
+    import random
+
     # 根据操作系统自动选择配置
     if sys.platform == "darwin":
         # macOS (本地) 配置: 使用小模型和CPU
@@ -248,8 +270,8 @@ if __name__ == '__main__':
             "num_layers": 2,
             "num_timesteps": 100,
             "max_seq_len": 30,
-            "data_path": "mock_train_sequences.txt",
-            "val_data_path": "mock_val_sequences.txt",
+            "data_files": ["mock_neg_only.txt", "mock_both.txt"], # 使用文件列表
+            "val_ratio": 0.2, # 本地测试使用更大的验证集比例
             "output_dir": "test_checkpoints_local",
             "pairing_strategy": "random",
             "num_references": 2,
@@ -268,8 +290,11 @@ if __name__ == '__main__':
             "num_layers": 8,
             "num_timesteps": 1000,
             "max_seq_len": 100,
-            "data_path": "data/main_training_sequences.txt", # 假设这是真实数据路径
-            "val_data_path": "data/validation_sequences.txt", # 假设这是真实数据路径
+            "data_files": [ # 正确的数据文件路径
+                "enhanced_architecture/gram_neg_only.txt",
+                "enhanced_architecture/gram_both.txt"
+            ],
+            "val_ratio": 0.1,
             "output_dir": "checkpoints_650M",
             "pairing_strategy": "random", # 后续可以改为更高级的策略
             "num_references": 3,
@@ -283,35 +308,24 @@ if __name__ == '__main__':
     
     # 如果是本地测试，创建模拟数据文件
     if sys.platform == "darwin":
-        mock_train_sequences = [("A" * 25) for _ in range(10)]
-        mock_val_sequences = [("V" * 25) for _ in range(5)]
+        mock_neg_only_sequences = [("N" * 25) for _ in range(10)]
+        mock_both_sequences = [("B" * 25) for _ in range(5)]
         
-        with open(config["data_path"], 'w') as f:
-            for seq in mock_train_sequences:
+        with open("mock_neg_only.txt", 'w') as f:
+            for seq in mock_neg_only_sequences:
                 f.write(seq + "\n")
                 
-        with open(config["val_data_path"], 'w') as f:
-            for seq in mock_val_sequences:
+        with open("mock_both.txt", 'w') as f:
+            for seq in mock_both_sequences:
                 f.write(seq + "\n")
     else:
         # 在服务器上，我们假设真实数据文件已存在
         # 可以添加检查确保文件存在
-        if not os.path.exists(config["data_path"]) or not os.path.exists(config["val_data_path"]):
-            logger.error(f"服务器模式下，数据文件未找到: {config['data_path']} 或 {config['val_data_path']}")
-            logger.error("请确保数据文件已准备好，或在本地模式下运行以使用模拟数据。")
-            sys.exit(1) # 退出脚本
-            
-    # 运行训练器
-    mock_train_sequences = [("A" * 25) for _ in range(10)]
-    mock_val_sequences = [("V" * 25) for _ in range(5)]
-    
-    with open(config["data_path"], 'w') as f:
-        for seq in mock_train_sequences:
-            f.write(seq + "\n")
-            
-    with open(config["val_data_path"], 'w') as f:
-        for seq in mock_val_sequences:
-            f.write(seq + "\n")
+        for file_path in config["data_files"]:
+            if not os.path.exists(file_path):
+                logger.error(f"服务器模式下，数据文件未找到: {file_path}")
+                logger.error("请确保数据文件已准备好，或在本地模式下运行以使用模拟数据。")
+                sys.exit(1) # 退出脚本
             
     # 运行训练器
     try:
@@ -334,10 +348,12 @@ if __name__ == '__main__':
     finally:
         # 清理模拟文件和目录
         import shutil
-        if os.path.exists(config["data_path"]):
-            os.remove(config["data_path"])
-        if os.path.exists(config["val_data_path"]):
-            os.remove(config["val_data_path"])
+        if sys.platform == "darwin":
+            if os.path.exists("mock_neg_only.txt"):
+                os.remove("mock_neg_only.txt")
+            if os.path.exists("mock_both.txt"):
+                os.remove("mock_both.txt")
+        
         if os.path.exists(config["output_dir"]):
             shutil.rmtree(config["output_dir"])
         logger.info("已清理所有模拟文件和目录。")
