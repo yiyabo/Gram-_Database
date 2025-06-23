@@ -97,6 +97,35 @@ class ConditionalTrainer:
         
         logger.info(f"数据集分割 -> 训练集: {len(train_sequences)}, 验证集: {len(val_sequences)}")
 
+        # 为对比学习加载正负样本
+        if self.config.get("use_contrastive", True):
+            positive_seqs = load_sequences_from_file(self.config["contrastive_positive_path"])
+            negative_seqs = load_sequences_from_file(self.config["contrastive_negative_path"])
+            
+            # 创建一个简单的Dataset来配对
+            class ContrastiveDataset(Dataset):
+                def __init__(self, pos, neg):
+                    self.pos = pos
+                    self.neg = neg
+                def __len__(self):
+                    return len(self.pos)
+                def __getitem__(self, idx):
+                    # 随机选择一个负样本
+                    return {
+                        "positive": self.pos[idx],
+                        "negative": random.choice(self.neg)
+                    }
+            
+            contrastive_dataset = ContrastiveDataset(positive_seqs, negative_seqs)
+            self.contrastive_loader = DataLoader(
+                contrastive_dataset,
+                batch_size=self.config["batch_size"],
+                shuffle=True
+            )
+            logger.info(f"对比学习数据集加载完成: {len(positive_seqs)} 正样本, {len(negative_seqs)} 负样本。")
+        else:
+            self.contrastive_loader = None
+
         train_dataset = ConditionalDataset(
             train_sequences,
             pairing_strategy=self.config.get("pairing_strategy", "random"),
@@ -122,13 +151,29 @@ class ConditionalTrainer:
         )
         
         # 4. 优化器和学习率调度器
-        self.optimizer = optim.AdamW(
+        # 优化器分为两部分
+        # 1. 扩散模型优化器
+        self.diffusion_optimizer = optim.AdamW(
             self.diffusion_model.model.parameters(),
             lr=self.config["learning_rate"]
         )
-        self.lr_scheduler = optim.lr_scheduler.StepLR(
-            self.optimizer, step_size=10, gamma=0.9
+        self.diffusion_lr_scheduler = optim.lr_scheduler.StepLR(
+            self.diffusion_optimizer, step_size=10, gamma=0.9
         )
+
+        # 2. ESM-2和对比学习头优化器 (如果ESM-2没有被冻结)
+        if not self.config.get("freeze_esm", False):
+            esm_params = list(self.feature_extractor.esm_model.parameters()) + \
+                         list(self.feature_extractor.contrastive_projection.parameters())
+            self.esm_optimizer = optim.AdamW(
+                esm_params,
+                lr=self.config.get("esm_learning_rate", 1e-5) # 通常使用更小的学习率
+            )
+            self.esm_lr_scheduler = optim.lr_scheduler.StepLR(
+                self.esm_optimizer, step_size=10, gamma=0.95
+            )
+        else:
+            self.esm_optimizer = None
         
         logger.info("✅ 所有组件初始化完成。")
 
@@ -179,30 +224,65 @@ class ConditionalTrainer:
         for epoch in range(self.current_epoch, self.config["epochs"]):
             self.current_epoch = epoch # 更新当前epoch
             self.diffusion_model.model.train()
+            if self.esm_optimizer:
+                self.feature_extractor.train()
+
+            # 使用zip来同时迭代两个dataloader
+            loaders = {"diffusion": self.train_loader}
+            if self.contrastive_loader:
+                loaders["contrastive"] = self.contrastive_loader
             
-            progress_bar = tqdm(self.train_loader, desc=f"Epoch {epoch + 1}/{self.config['epochs']}")
-            total_loss = 0.0
+            progress_bar = tqdm(zip(*loaders.values()), desc=f"Epoch {epoch + 1}/{self.config['epochs']}", total=len(self.train_loader))
             
-            for batch in progress_bar:
-                self.optimizer.zero_grad()
+            epoch_losses = {"diffusion": [], "contrastive": []}
+
+            for batch_tuple in progress_bar:
+                batch_dict = dict(zip(loaders.keys(), batch_tuple))
+
+                # --- 1. 扩散模型训练步骤 ---
+                diffusion_batch = batch_dict['diffusion']
+                self.diffusion_optimizer.zero_grad()
                 
-                target_tokens = batch['target_tokens']
-                condition_features = batch['condition_features']
+                target_tokens = diffusion_batch['target_tokens']
+                condition_features = diffusion_batch['condition_features']
                 
-                # 计算损失
-                loss = self.diffusion_model.training_loss(target_tokens, condition_features)
-                
-                # 反向传播和优化
-                loss.backward()
-                self.optimizer.step()
-                
-                total_loss += loss.item()
-                progress_bar.set_postfix(loss=f"{loss.item():.4f}")
+                diffusion_loss = self.diffusion_model.training_loss(target_tokens, condition_features)
+                diffusion_loss.backward()
+                self.diffusion_optimizer.step()
+                epoch_losses["diffusion"].append(diffusion_loss.item())
+
+                # --- 2. 对比学习训练步骤 ---
+                if self.esm_optimizer and 'contrastive' in batch_dict:
+                    contrastive_batch = batch_dict['contrastive']
+                    self.esm_optimizer.zero_grad()
+                    
+                    contrastive_loss = self.feature_extractor.compute_contrastive_loss(
+                        contrastive_batch["positive"],
+                        contrastive_batch["negative"]
+                    )
+                    
+                    # 加权并反向传播
+                    contrastive_weight = self.config.get("contrastive_loss_weight", 0.1)
+                    weighted_contrastive_loss = contrastive_loss * contrastive_weight
+                    weighted_contrastive_loss.backward()
+                    self.esm_optimizer.step()
+                    epoch_losses["contrastive"].append(contrastive_loss.item())
+
+                # 更新进度条
+                progress_bar.set_postfix(
+                    diff_loss=f"{epoch_losses['diffusion'][-1]:.4f}",
+                    cont_loss=f"{epoch_losses['contrastive'][-1] if epoch_losses['contrastive'] else 0:.4f}"
+                )
+
+            # --- Epoch 结束 ---
+            avg_diff_loss = sum(epoch_losses["diffusion"]) / len(epoch_losses["diffusion"])
+            avg_cont_loss = sum(epoch_losses["contrastive"]) / len(epoch_losses["contrastive"]) if epoch_losses["contrastive"] else 0
             
-            avg_loss = total_loss / len(self.train_loader)
-            self.lr_scheduler.step()
+            self.diffusion_lr_scheduler.step()
+            if self.esm_optimizer:
+                self.esm_lr_scheduler.step()
             
-            logger.info(f"Epoch {epoch+1} 完成 | 平均训练损失: {avg_loss:.4f} | 当前学习率: {self.lr_scheduler.get_last_lr()[0]:.6f}")
+            logger.info(f"Epoch {epoch+1} 完成 | 平均扩散损失: {avg_diff_loss:.4f} | 平均对比损失: {avg_cont_loss:.4f}")
             
             # 运行验证
             if self.val_loader:
@@ -248,8 +328,10 @@ class ConditionalTrainer:
         torch.save({
             'epoch': self.current_epoch,
             'model_state_dict': model_state_dict,
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'lr_scheduler_state_dict': self.lr_scheduler.state_dict(),
+            'diffusion_optimizer_state_dict': self.diffusion_optimizer.state_dict(),
+            'esm_optimizer_state_dict': self.esm_optimizer.state_dict() if self.esm_optimizer else None,
+            'diffusion_lr_scheduler_state_dict': self.diffusion_lr_scheduler.state_dict(),
+            'esm_lr_scheduler_state_dict': self.esm_lr_scheduler.state_dict() if self.esm_lr_scheduler else None,
             'best_val_loss': self.best_val_loss,
         }, checkpoint_path)
         
@@ -270,8 +352,13 @@ class ConditionalTrainer:
             else self.diffusion_model.model
             
         model_to_load.load_state_dict(checkpoint['model_state_dict'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        self.lr_scheduler.load_state_dict(checkpoint['lr_scheduler_state_dict'])
+        self.diffusion_optimizer.load_state_dict(checkpoint['diffusion_optimizer_state_dict'])
+        self.diffusion_lr_scheduler.load_state_dict(checkpoint['diffusion_lr_scheduler_state_dict'])
+        
+        if self.esm_optimizer and checkpoint.get('esm_optimizer_state_dict'):
+            self.esm_optimizer.load_state_dict(checkpoint['esm_optimizer_state_dict'])
+            self.esm_lr_scheduler.load_state_dict(checkpoint['esm_lr_scheduler_state_dict'])
+
         self.current_epoch = checkpoint.get('epoch', 0) + 1 # 从下一个epoch开始
         self.best_val_loss = checkpoint.get('best_val_loss', float('inf'))
         
@@ -318,18 +405,26 @@ if __name__ == '__main__':
             "num_layers": 8,
             "num_timesteps": 1000,
             "max_seq_len": 100,
-            "data_files": [ # 正确的数据文件路径
+            "data_files": [
                 "enhanced_architecture/gram_neg_only.txt",
                 "enhanced_architecture/gram_both.txt"
             ],
             "val_ratio": 0.1,
-            "output_dir": "checkpoints_650M",
-            "pairing_strategy": "similarity", # 使用我们新实现的相似度配对
+            "output_dir": "checkpoints_hybrid_650M", # 新的输出目录
+            "pairing_strategy": "similarity",
             "num_references": 3,
-            "batch_size": 16, # 针对4090D可以设置更大的batch size
-            "learning_rate": 5e-5,
+            "batch_size": 16,
+            "learning_rate": 5e-5, # 扩散模型学习率
             "epochs": 200,
             "save_interval": 5,
+            
+            # --- 新增：混合训练配置 ---
+            "use_contrastive": True,
+            "freeze_esm": False, # 我们需要微调ESM
+            "esm_learning_rate": 1e-5, # 为ESM设置更小的学习率
+            "contrastive_loss_weight": 0.1, # 对比损失的权重
+            "contrastive_positive_path": "enhanced_architecture/gram_neg_only.txt",
+            "contrastive_negative_path": "enhanced_architecture/gram_pos_only.txt",
         }
 
     # --- 以下为测试执行逻辑 ---

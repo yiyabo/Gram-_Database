@@ -52,16 +52,43 @@ class AttentionPooling(nn.Module):
         
         return pooled
 
+class ContrastiveLoss(nn.Module):
+    """对比学习损失函数 (InfoNCE)"""
+    def __init__(self, temperature: float = 0.07):
+        super().__init__()
+        self.temperature = temperature
+
+    def forward(self, features_a: torch.Tensor, features_b: torch.Tensor) -> torch.Tensor:
+        # features_a: anchor/positive, features_b: negative
+        features_a = F.normalize(features_a, p=2, dim=1)
+        features_b = F.normalize(features_b, p=2, dim=1)
+        
+        # 拉近 a 和 a' (同一批次内的其他正样本)
+        # 推远 a 和 b (负样本)
+        logits = torch.cat([features_a @ features_a.T, features_a @ features_b.T], dim=1)
+        logits /= self.temperature
+        
+        # 正样本的标签是其在批次内的索引
+        labels = torch.arange(len(features_a), device=features_a.device)
+        
+        # 屏蔽对角线上的自相似度
+        mask = torch.eye(len(features_a), device=features_a.device).bool()
+        logits.masked_fill_(mask, -1e9)
+
+        return F.cross_entropy(logits, labels)
+
 class ConditionalESM2FeatureExtractor(nn.Module):
-    """专为条件扩散设计的ESM-2特征提取器"""
+    """专为条件扩散设计的ESM-2特征提取器，支持对比学习辅助任务"""
     
-    def __init__(self, 
+    def __init__(self,
                  model_name: str = "facebook/esm2_t33_650M_UR50D",
                  condition_dim: int = 512,
                  use_layers: List[int] = [6, 12, 18, 24],
                  pooling_strategy: str = "attention",
                  cache_dir: str = "./esm2_cache",
-                 max_cache_size: int = 10000):
+                 max_cache_size: int = 10000,
+                 freeze_esm: bool = False, # 新增：是否冻结ESM-2
+                 use_contrastive: bool = True): # 新增：是否使用对比学习
         super().__init__()
         
         self.model_name = model_name
@@ -78,9 +105,13 @@ class ConditionalESM2FeatureExtractor(nn.Module):
         self.tokenizer = EsmTokenizer.from_pretrained(model_name)
         self.esm_model = EsmModel.from_pretrained(model_name, output_hidden_states=True)
         
-        # 冻结ESM-2参数
-        for param in self.esm_model.parameters():
-            param.requires_grad = False
+        # 根据配置决定是否冻结ESM-2
+        if freeze_esm:
+            for param in self.esm_model.parameters():
+                param.requires_grad = False
+            logger.info("ESM-2预训练权重已冻结。")
+        else:
+            logger.info("ESM-2预训练权重将进行微调。")
         
         # 获取ESM-2维度
         self.esm_dim = self.esm_model.config.hidden_size
@@ -117,6 +148,16 @@ class ConditionalESM2FeatureExtractor(nn.Module):
         self.cache = {}
         self.cache_hits = 0
         self.cache_misses = 0
+
+        # === 对比学习组件 ===
+        if use_contrastive:
+            self.contrastive_loss_fn = ContrastiveLoss()
+            # 对比学习需要一个单独的投影头
+            self.contrastive_projection = nn.Sequential(
+                nn.Linear(self.esm_dim, self.esm_dim),
+                nn.ReLU(),
+                nn.Linear(self.esm_dim, 128) # 对比学习通常使用较小的特征维度
+            )
         
         logger.info(f"ConditionalESM2FeatureExtractor初始化完成")
         logger.info(f"使用层: {use_layers}, 条件维度: {condition_dim}")
@@ -295,6 +336,32 @@ class ConditionalESM2FeatureExtractor(nn.Module):
             logger.info(f"缓存已从 {cache_path} 加载，大小: {len(self.cache)}")
         else:
             logger.warning(f"缓存文件不存在: {cache_path}")
+
+    def _encode_for_contrastive(self, sequences: List[str]) -> torch.Tensor:
+        """专用于对比学习的编码和投影"""
+        inputs = self.tokenizer(
+            sequences, return_tensors="pt", padding=True, truncation=True, max_length=512
+        ).to(next(self.esm_model.parameters()).device)
+        
+        # ESM-2前向传播，需要梯度
+        outputs = self.esm_model(**inputs)
+        
+        # 使用[CLS] token的表示作为序列的全局表示
+        cls_token_repr = outputs.last_hidden_state[:, 0, :]
+        
+        # 通过对比学习投影头
+        contrastive_features = self.contrastive_projection(cls_token_repr)
+        return contrastive_features
+
+    def compute_contrastive_loss(self, positive_seqs: List[str], negative_seqs: List[str]) -> torch.Tensor:
+        """计算对比学习损失"""
+        if not hasattr(self, 'contrastive_loss_fn'):
+            return torch.tensor(0.0, device=next(self.parameters()).device)
+            
+        pos_features = self._encode_for_contrastive(positive_seqs)
+        neg_features = self._encode_for_contrastive(negative_seqs)
+        
+        return self.contrastive_loss_fn(pos_features, neg_features)
 
 
 class ConditionalFeatureManager:
