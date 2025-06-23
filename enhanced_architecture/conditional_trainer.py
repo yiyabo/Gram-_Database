@@ -248,6 +248,8 @@ class ConditionalTrainer:
                 
                 diffusion_loss = self.diffusion_model.training_loss(target_tokens, condition_features)
                 diffusion_loss.backward()
+                # 添加梯度裁剪
+                torch.nn.utils.clip_grad_norm_(self.diffusion_model.model.parameters(), max_norm=1.0)
                 self.diffusion_optimizer.step()
                 epoch_losses["diffusion"].append(diffusion_loss.item())
 
@@ -265,6 +267,8 @@ class ConditionalTrainer:
                     contrastive_weight = self.config.get("contrastive_loss_weight", 0.1)
                     weighted_contrastive_loss = contrastive_loss * contrastive_weight
                     weighted_contrastive_loss.backward()
+                    # 添加梯度裁剪
+                    torch.nn.utils.clip_grad_norm_(self.feature_extractor.parameters(), max_norm=1.0)
                     self.esm_optimizer.step()
                     epoch_losses["contrastive"].append(contrastive_loss.item())
 
