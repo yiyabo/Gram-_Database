@@ -244,9 +244,8 @@ class ConditionalTrainer:
                 self.diffusion_optimizer.zero_grad()
                 
                 target_tokens = diffusion_batch['target_tokens']
-                condition_features = diffusion_batch['condition_features']
-                
-                diffusion_loss = self.diffusion_model.training_loss(target_tokens, condition_features)
+                # 核心修改：在训练扩散模型时，不传入条件特征，进行无条件训练
+                diffusion_loss = self.diffusion_model.training_loss(target_tokens, None)
                 diffusion_loss.backward()
                 # 添加梯度裁剪
                 torch.nn.utils.clip_grad_norm_(self.diffusion_model.model.parameters(), max_norm=1.0)
