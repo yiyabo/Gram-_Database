@@ -47,6 +47,9 @@ class ConditionalTrainer:
         # 初始化所有组件
         self._init_components()
         
+        # 为混合精度训练初始化GradScaler
+        self.scaler = torch.cuda.amp.GradScaler(enabled=self.config.get("use_mixed_precision", True))
+        
     def _init_components(self):
         """初始化模型、数据加载器、优化器等"""
         logger.info("正在初始化组件...")
@@ -416,15 +419,17 @@ if __name__ == '__main__':
             "output_dir": "checkpoints_hybrid_3B", # 新的输出目录
             "pairing_strategy": "similarity",
             "num_references": 3,
-            "batch_size": 4, # 减小batch size以适应3B模型的显存需求
-            "learning_rate": 3e-5, # 对大模型使用稍小的学习率
-            "epochs": 300, # 增加训练轮数
+            "batch_size": 2, # 进一步减小batch size
+            "gradient_accumulation_steps": 8, # 梯度累积 (有效batch size = 2*8=16)
+            "learning_rate": 3e-5,
+            "epochs": 300,
             "save_interval": 10, # 增加保存间隔
             
             # --- 混合训练配置 ---
+            "use_mixed_precision": True, # 启用混合精度
             "use_contrastive": True,
             "freeze_esm": False,
-            "esm_learning_rate": 2e-6, # 微调3B模型需要非常小的学习率
+            "esm_learning_rate": 2e-6,
             "contrastive_loss_weight": 0.1,
             "contrastive_positive_path": "enhanced_architecture/gram_neg_only.txt",
             "contrastive_negative_path": "enhanced_architecture/gram_pos_only.txt",
