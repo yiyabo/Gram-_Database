@@ -359,11 +359,15 @@ class ConditionalESM2FeatureExtractor(nn.Module):
         # ESM-2前向传播，需要梯度
         outputs = self.esm_model(**inputs)
         
-        # 使用[CLS] token的表示作为序列的全局表示
-        cls_token_repr = outputs.last_hidden_state[:, 0, :]
+        # 使用所有token的平均池化作为序列的全局表示，这比单独使用[CLS]更稳定
+        attention_mask = inputs['attention_mask']
+        sequence_repr = outputs.last_hidden_state
+        
+        masked_repr = sequence_repr * attention_mask.unsqueeze(-1)
+        pooled_features = masked_repr.sum(dim=1) / attention_mask.sum(dim=1, keepdim=True)
         
         # 通过对比学习投影头
-        contrastive_features = self.contrastive_projection(cls_token_repr)
+        contrastive_features = self.contrastive_projection(pooled_features)
         return contrastive_features
 
     def compute_contrastive_loss(self, positive_seqs: List[str], negative_seqs: List[str]) -> torch.Tensor:
