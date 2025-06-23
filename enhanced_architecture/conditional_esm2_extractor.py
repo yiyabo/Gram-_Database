@@ -72,6 +72,11 @@ class ContrastiveLoss(nn.Module):
         
         # 拼接
         logits = torch.cat([pos_sim, neg_sim], dim=1)
+        
+        # 数值稳定化: 在缩放前减去最大值，防止上溢
+        # .detach()确保这个操作不参与梯度计算
+        logits -= torch.max(logits, dim=1, keepdim=True)[0].detach()
+        
         logits /= self.temperature
         
         # 正样本的标签是其在批次内的索引
