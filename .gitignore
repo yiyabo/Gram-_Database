@@ -65,10 +65,15 @@ gram_predictor/models/*.h5
 gram_predictor/models/*.keras
 *.pt
 *.pth
-gram_predictor/charts/dimensionality_reduction.png
-gram_predictor/charts/feature_comparison.png
-gram_predictor/charts/probability_histogram.png
-gram_predictor/charts/radar_chart.png
-gram_predictor/charts/scatter_plot.png
-gram_predictor/charts/sliding_window_analysis.png
-gram_predictor/charts/dimensionality_reduction.png
+# Generated images and charts
+Gram_feature/*.png
+gram_predictor/charts/*.png
+model_TAE/**/*.png
+model_TAE/**/loss_curve.png
+
+# Prediction files
+predictions/
+
+# Cache directories
+esm2_cache/
+test_cache/
