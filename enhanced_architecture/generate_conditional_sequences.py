@@ -138,21 +138,22 @@ def main():
     logger.info(f"使用设备: {device}")
     
     # 使用与训练时匹配的服务器配置
-    config = {
+    # 关键：用于加载模型的max_seq_len必须与训练时完全一致
+    model_load_config = {
         "esm_model": "facebook/esm2_t33_650M_UR50D",
         "condition_dim": 512,
         "hidden_dim": 512,
         "num_layers": 8,
         "num_timesteps": 1000,
-        "max_seq_len": args.max_len, # 使用参数中的最大长度
+        "max_seq_len": 100, # 这是训练时使用的值
     }
 
     # --- 2. 加载模型和特征提取器 ---
     try:
-        diffusion_model = load_trained_model(config, args.checkpoint, device)
+        diffusion_model = load_trained_model(model_load_config, args.checkpoint, device)
         feature_extractor = ConditionalESM2FeatureExtractor(
-            model_name=config["esm_model"],
-            condition_dim=config["condition_dim"]
+            model_name=model_load_config["esm_model"],
+            condition_dim=model_load_config["condition_dim"]
         ).to(device)
     except Exception as e:
         logger.critical(f"无法加载模型或特征提取器: {e}")
@@ -176,6 +177,7 @@ def main():
     # --- 4. 生成序列 ---
     logger.info(f"正在生成 {args.num_sequences} 条长度在 {args.min_len}-{args.max_len} 之间的序列...")
     # 我们先生成最大长度的序列，然后进行截断
+    # 注意：这里传递给sample的seq_len是用户指定的，而不是模型加载时的100
     generated_tokens = diffusion_model.sample(
         batch_size=args.num_sequences,
         seq_len=args.max_len,
