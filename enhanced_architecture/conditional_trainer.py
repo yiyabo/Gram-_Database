@@ -405,10 +405,10 @@ if __name__ == '__main__':
         # Linux (服务器) 配置: 使用大模型和GPU
         logger.info("检测到Linux系统，使用服务器训练配置。")
         config = {
-            "esm_model": "facebook/esm2_t36_3B_UR50D", # 升级到3B模型
-            "condition_dim": 1280, # 匹配3B模型的更大维度
-            "hidden_dim": 1024, # 相应增大扩散模型维度
-            "num_layers": 12, # 相应加深扩散模型
+            "esm_model": "facebook/esm2_t33_650M_UR50D", # 回退到650M模型
+            "condition_dim": 512,
+            "hidden_dim": 512,
+            "num_layers": 8,
             "num_timesteps": 1000,
             "max_seq_len": 100,
             "data_files": [
@@ -416,20 +416,20 @@ if __name__ == '__main__':
                 "enhanced_architecture/gram_both.txt"
             ],
             "val_ratio": 0.1,
-            "output_dir": "checkpoints_hybrid_3B", # 新的输出目录
+            "output_dir": "checkpoints_hybrid_650M",
             "pairing_strategy": "similarity",
             "num_references": 3,
-            "batch_size": 2, # 进一步减小batch size
-            "gradient_accumulation_steps": 8, # 梯度累积 (有效batch size = 2*8=16)
-            "learning_rate": 3e-5,
-            "epochs": 300,
-            "save_interval": 10, # 增加保存间隔
+            "batch_size": 16,
+            "gradient_accumulation_steps": 1, # 650M模型不需要梯度累积
+            "learning_rate": 5e-5,
+            "epochs": 200,
+            "save_interval": 5,
             
             # --- 混合训练配置 ---
-            "use_mixed_precision": True, # 启用混合精度
+            "use_mixed_precision": True,
             "use_contrastive": True,
             "freeze_esm": False,
-            "esm_learning_rate": 2e-6,
+            "esm_learning_rate": 1e-5,
             "contrastive_loss_weight": 0.1,
             "contrastive_positive_path": "enhanced_architecture/gram_neg_only.txt",
             "contrastive_negative_path": "enhanced_architecture/gram_pos_only.txt",

@@ -53,42 +53,30 @@ class AttentionPooling(nn.Module):
         return pooled
 
 class ContrastiveLoss(nn.Module):
-    """对比学习损失函数 (InfoNCE)"""
+    """对比学习损失函数 - 恢复使用旧的、经过验证的稳定版本"""
     def __init__(self, temperature: float = 0.07):
         super().__init__()
         self.temperature = temperature
-
-    def forward(self, features_a: torch.Tensor, features_b: torch.Tensor) -> torch.Tensor:
-        # features_a: anchor/positive, features_b: negative
-        features_a = F.normalize(features_a, p=2, dim=1)
-        features_b = F.normalize(features_b, p=2, dim=1)
         
-        # 拉近 a 和 a' (同一批次内的其他正样本)
-        # 推远 a 和 b (负样本)
-        # 计算正样本之间的相似度
-        pos_sim = features_a @ features_a.T
-        # 计算正负样本之间的相似度
-        neg_sim = features_a @ features_b.T
+    def forward(self, positive_features: torch.Tensor, negative_features: torch.Tensor) -> torch.Tensor:
+        pos_norm = F.normalize(positive_features, p=2, dim=1)
+        neg_norm = F.normalize(negative_features, p=2, dim=1)
         
-        # 拼接
-        logits = torch.cat([pos_sim, neg_sim], dim=1)
+        pos_sim = torch.matmul(pos_norm, pos_norm.T) / self.temperature
+        neg_sim = torch.matmul(pos_norm, neg_norm.T) / self.temperature
         
-        # 数值稳定化: 在缩放前减去最大值，防止上溢
-        # .detach()确保这个操作不参与梯度计算
-        logits -= torch.max(logits, dim=1, keepdim=True)[0].detach()
+        pos_exp = torch.exp(pos_sim)
+        neg_exp = torch.exp(neg_sim)
         
-        logits /= self.temperature
+        pos_mask = torch.eye(pos_exp.size(0), device=pos_exp.device).bool()
+        pos_exp = pos_exp.masked_fill(pos_mask, 0)
         
-        # 正样本的标签是其在批次内的索引
-        labels = torch.arange(len(features_a), device=features_a.device)
+        numerator = pos_exp.sum(dim=1)
+        denominator = numerator + neg_exp.sum(dim=1)
         
-        # 创建掩码以屏蔽对角线上的自相似度 (只在正样本部分)
-        mask = torch.zeros_like(logits, dtype=torch.bool)
-        mask.fill_diagonal_(True)
+        loss = -torch.log(numerator / (denominator + 1e-8)).mean()
         
-        logits.masked_fill_(mask, -1e9)
-
-        return F.cross_entropy(logits, labels)
+        return loss
 
 class ConditionalESM2FeatureExtractor(nn.Module):
     """专为条件扩散设计的ESM-2特征提取器，支持对比学习辅助任务"""
