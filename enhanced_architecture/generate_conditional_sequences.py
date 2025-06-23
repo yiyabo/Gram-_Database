@@ -114,8 +114,8 @@ def run_predictor(fasta_file, output_file):
 
 def main():
     parser = argparse.ArgumentParser(description="使用条件扩散模型生成肽序列并进行预测。")
-    parser.add_argument("--checkpoint", type=str, default="checkpoints_650M/best_model.pt",
-                        help="训练好的模型检查点路径。")
+    parser.add_argument("--checkpoint", type=str, required=True,
+                        help="训练好的模型检查点路径 (例如, checkpoints_650M/best_model_epoch_199.pt)。")
     parser.add_argument("--num_sequences", type=int, default=100,
                         help="要生成的序列数量。")
     parser.add_argument("--num_references", type=int, default=5,
