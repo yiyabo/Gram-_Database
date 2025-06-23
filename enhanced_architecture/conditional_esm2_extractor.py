@@ -65,14 +65,22 @@ class ContrastiveLoss(nn.Module):
         
         # 拉近 a 和 a' (同一批次内的其他正样本)
         # 推远 a 和 b (负样本)
-        logits = torch.cat([features_a @ features_a.T, features_a @ features_b.T], dim=1)
+        # 计算正样本之间的相似度
+        pos_sim = features_a @ features_a.T
+        # 计算正负样本之间的相似度
+        neg_sim = features_a @ features_b.T
+        
+        # 拼接
+        logits = torch.cat([pos_sim, neg_sim], dim=1)
         logits /= self.temperature
         
         # 正样本的标签是其在批次内的索引
         labels = torch.arange(len(features_a), device=features_a.device)
         
-        # 屏蔽对角线上的自相似度
-        mask = torch.eye(len(features_a), device=features_a.device).bool()
+        # 创建掩码以屏蔽对角线上的自相似度 (只在正样本部分)
+        mask = torch.zeros_like(logits, dtype=torch.bool)
+        mask.fill_diagonal_(True)
+        
         logits.masked_fill_(mask, -1e9)
 
         return F.cross_entropy(logits, labels)
