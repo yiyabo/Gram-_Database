@@ -402,10 +402,10 @@ if __name__ == '__main__':
         # Linux (服务器) 配置: 使用大模型和GPU
         logger.info("检测到Linux系统，使用服务器训练配置。")
         config = {
-            "esm_model": "facebook/esm2_t33_650M_UR50D",
-            "condition_dim": 512,
-            "hidden_dim": 512,
-            "num_layers": 8,
+            "esm_model": "facebook/esm2_t36_3B_UR50D", # 升级到3B模型
+            "condition_dim": 1280, # 匹配3B模型的更大维度
+            "hidden_dim": 1024, # 相应增大扩散模型维度
+            "num_layers": 12, # 相应加深扩散模型
             "num_timesteps": 1000,
             "max_seq_len": 100,
             "data_files": [
@@ -413,19 +413,19 @@ if __name__ == '__main__':
                 "enhanced_architecture/gram_both.txt"
             ],
             "val_ratio": 0.1,
-            "output_dir": "checkpoints_hybrid_650M", # 新的输出目录
+            "output_dir": "checkpoints_hybrid_3B", # 新的输出目录
             "pairing_strategy": "similarity",
             "num_references": 3,
-            "batch_size": 16,
-            "learning_rate": 5e-5, # 扩散模型学习率
-            "epochs": 200,
-            "save_interval": 5,
+            "batch_size": 4, # 减小batch size以适应3B模型的显存需求
+            "learning_rate": 3e-5, # 对大模型使用稍小的学习率
+            "epochs": 300, # 增加训练轮数
+            "save_interval": 10, # 增加保存间隔
             
-            # --- 新增：混合训练配置 ---
+            # --- 混合训练配置 ---
             "use_contrastive": True,
-            "freeze_esm": False, # 我们需要微调ESM
-            "esm_learning_rate": 1e-5, # 为ESM设置更小的学习率
-            "contrastive_loss_weight": 0.1, # 对比损失的权重
+            "freeze_esm": False,
+            "esm_learning_rate": 2e-6, # 微调3B模型需要非常小的学习率
+            "contrastive_loss_weight": 0.1,
             "contrastive_positive_path": "enhanced_architecture/gram_neg_only.txt",
             "contrastive_negative_path": "enhanced_architecture/gram_pos_only.txt",
         }
