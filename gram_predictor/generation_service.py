@@ -14,6 +14,15 @@ from esm2_auxiliary_encoder import ESM2AuxiliaryEncoder
 from diffusion_models.d3pm_diffusion import D3PMDiffusion, D3PMScheduler, D3PMUNet
 from data_loader import tokens_to_sequence
 
+# 词汇表转换：从21词汇格式转换为22词汇格式（用于与预测服务兼容）
+def convert_sequence_for_prediction(sequence: str) -> str:
+    """
+    将生成的序列转换为预测服务兼容的格式
+    生成服务使用21词汇（PAD + 20氨基酸），预测服务使用22词汇（PAD + UNK + 20氨基酸）
+    """
+    # 序列本身不需要转换，只是确保格式正确
+    return sequence.upper().strip()
+
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -190,10 +199,12 @@ class SequenceGenerationService:
             sequences = []
             for i, tokens in enumerate(generated_tokens):
                 seq = tokens_to_sequence(tokens.cpu().numpy())
+                # 转换为预测服务兼容格式
+                converted_seq = convert_sequence_for_prediction(seq)
                 sequences.append({
                     "id": f"Generated_Seq_{i+1}",
-                    "sequence": seq,
-                    "length": len(seq),
+                    "sequence": converted_seq,
+                    "length": len(converted_seq),
                     "method": sampling_method
                 })
             

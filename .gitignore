@@ -69,3 +69,17 @@ gram_predictor/charts/*.png
 
 # Prediction output files
 predictions/
+Paper/Paper.aux
+Paper/Paper.fdb_latexmk
+Paper/Paper.fls
+.gitignore
+Paper/Paper.pdf
+Paper/Paper.out
+Paper/Paper.synctex.gz
+.gitignore
+Paper/figure/Box_Plot.png
+Paper/figure/Heatmap.png
+Paper/figure/Rader.png
+.gitignore
+Paper/Paper.tex
+Paper/figure/Model Overview.png
