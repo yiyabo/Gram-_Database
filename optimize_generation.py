@@ -75,7 +75,7 @@ class SequenceOptimizer:
             {
                 'method': 'diverse',
                 'param_name': 'diversity_strength',
-                'param_range': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+                'param_range': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2]
             },
             # Top-K Sampling - Top-K采样
             {
@@ -402,13 +402,27 @@ class SequenceOptimizer:
     def optimize_with_references(self, selected_refs: List[str] = None) -> Tuple[Dict, List[Dict]]:
         """使用参考序列进行条件生成优化"""
         if selected_refs is None:
-            # 默认选择几个代表性的APD天然抗菌肽（不同长度和特征）
+            # 你可以选择任意组合，这里提供几个选项：
+            
+            # 选项1: 代表性4条（默认）
             selected_refs = [
                 "AP00007",  # 短肽，富含脯氨酸
                 "AP00051",  # 中等长度，α-螺旋结构
                 "AP00126",  # 长肽，富含赖氨酸
                 "AP00036"   # 富含半胱氨酸，结构复杂
             ]
+            
+            # 选项2: 使用所有短肽
+            # selected_refs = ["AP00007", "AP00168", "AP00169", "AP00142"]
+            
+            # 选项3: 使用所有中等长度肽
+            # selected_refs = ["AP00051", "AP00126", "AP00129"]
+            
+            # 选项4: 使用全部11条（计算量大但更全面）
+            # selected_refs = list(self.reference_sequences.keys())
+            
+            # 选项5: 只关注结构特殊的
+            # selected_refs = ["AP00036", "AP00040", "AP00009", "AP00010"]
         
         logger.info("🧬 开始参考序列条件生成优化...")
         logger.info(f"📋 使用参考序列: {', '.join(selected_refs)}")
@@ -432,7 +446,7 @@ class SequenceOptimizer:
             {
                 'method': 'diverse',
                 'param_name': 'diversity_strength',
-                'param_range': [0.2, 0.3, 0.4, 0.5]  # 重点测试中等多样性
+                'param_range': [0.5, 0.7, 0.9, 1.1]  # 重点测试高多样性
             },
             {
                 'method': 'top_k', 
