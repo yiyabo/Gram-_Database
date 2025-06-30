@@ -15,7 +15,7 @@ import logging
 from typing import List, Tuple, Optional
 
 # 导入统一配置
-from config.model_config import ESM2Config
+from gram_predictor.config.model_config import ESM2Config
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
