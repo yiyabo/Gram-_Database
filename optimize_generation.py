@@ -75,7 +75,7 @@ class SequenceOptimizer:
             {
                 'method': 'diverse',
                 'param_name': 'diversity_strength',
-                'param_range': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2]
+                'param_range': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4]
             }
         ]
         
@@ -434,7 +434,7 @@ class SequenceOptimizer:
             {
                 'method': 'diverse',
                 'param_name': 'diversity_strength',
-                'param_range': [0.5, 0.7, 0.9, 1.1]  # 重点测试高多样性区间
+                'param_range': [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4]  # 完整的高多样性区间
             }
         ]
         
