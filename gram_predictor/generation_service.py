@@ -9,10 +9,10 @@ import torch
 import numpy as np
 import logging
 from typing import List, Optional, Dict, Any
-from config.model_config import get_config
-from esm2_auxiliary_encoder import ESM2AuxiliaryEncoder
-from diffusion_models.d3pm_diffusion import D3PMDiffusion, D3PMScheduler, D3PMUNet
-from data_loader import tokens_to_sequence
+from gram_predictor.config.model_config import get_config
+from gram_predictor.esm2_auxiliary_encoder import ESM2AuxiliaryEncoder
+from gram_predictor.diffusion_models.d3pm_diffusion import D3PMDiffusion, D3PMScheduler, D3PMUNet
+from gram_predictor.data_loader import tokens_to_sequence
 
 # 词汇表转换：从21词汇格式转换为22词汇格式（用于与预测服务兼容）
 def convert_sequence_for_prediction(sequence: str) -> str:
