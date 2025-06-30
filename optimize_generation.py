@@ -32,6 +32,27 @@ class SequenceOptimizer:
         self.device = 'cpu'
         logger.info(f"使用设备: {self.device}（生成服务内部设备检测优先）")
         
+        # 推荐的参考抗菌肽序列
+        self.reference_sequences = {
+            # 经典抗菌肽
+            "Magainin-2": "GIGKFLHSAKKFGKAFVGEIMNS",
+            "Cecropin A": "KWKLFKKIEKVGQNIRDGIIKAGPAVAVVGQATQIAK", 
+            "Melittin": "GIGAVLKVLTTGLPALISWIKRKRQQ",
+            "LL-37": "LLGDFFRKSKEKIGKEFKRIVQRIKDFLRNLVPRTES",
+            
+            # 短肽类
+            "Nisin": "ITSISLCTPGCKTGALMGCNMKTATCHCSIHVSK",
+            "Defensin": "GFGCPNNYQCHRHCKSIPGRYGGYCRAFEGY",
+            
+            # 人工设计肽
+            "Synthetic-1": "KLKLLLLLKLKLLLKLK",
+            "Synthetic-2": "RWGRWGRWGRWG",
+            
+            # 来源于天然蛋白
+            "Lactoferricin B": "FKCRRWQWRMKKLGAPSITCVRRAF",
+            "Indolicidin": "ILPWKWPWWPWRR"
+        }
+        
         # 初始化生成服务
         try:
             self.gen_service = SequenceGenerationService()
@@ -205,6 +226,94 @@ class SequenceOptimizer:
             logger.error(f"参数测试失败: {e}")
             return 0.0, [], {}
     
+    def test_conditional_generation(self, temperature: float, sampling_method: str,
+                                  param_name: str = None, param_value: float = None,
+                                  reference_sequences: List[str] = None,
+                                  num_sequences: int = 12) -> Tuple[float, List[str], Dict]:
+        """测试条件生成参数组合"""
+        params_info = f"temperature={temperature}, method={sampling_method}"
+        if param_name and param_value is not None:
+            params_info += f", {param_name}={param_value}"
+        
+        logger.info(f"测试条件生成参数: {params_info}")
+        logger.info(f"参考序列数量: {len(reference_sequences) if reference_sequences else 0}")
+        
+        try:
+            # 构建参数字典
+            kwargs = {'temperature': temperature}
+            if param_name and param_value is not None:
+                kwargs[param_name] = param_value
+            
+            # 条件生成序列
+            result = self.gen_service.generate_sequences(
+                num_sequences=num_sequences,
+                seq_length=40,
+                sampling_method=sampling_method,
+                reference_sequences=reference_sequences,  # 传入参考序列
+                **kwargs
+            )
+            
+            if not result.get('success', False):
+                logger.error(f"条件生成失败: {result.get('message', 'Unknown error')}")
+                return 0.0, [], {}
+            
+            sequences = [seq_data['sequence'] for seq_data in result['sequences']]
+            
+            # 计算质量分数
+            confidences = self.sequence_to_confidence(sequences)
+            avg_confidence = np.mean(confidences)
+            
+            # 计算与参考序列的相似性
+            ref_similarities = []
+            if reference_sequences:
+                for seq in sequences:
+                    max_sim = max(self._calculate_similarity(seq, ref_seq) for ref_seq in reference_sequences)
+                    ref_similarities.append(max_sim)
+            
+            # 计算额外统计信息
+            stats = {
+                'avg_length': np.mean([len(seq) for seq in sequences]),
+                'std_length': np.std([len(seq) for seq in sequences]),
+                'unique_sequences': len(set(sequences)),
+                'avg_confidence': avg_confidence,
+                'std_confidence': np.std(confidences),
+                'min_confidence': np.min(confidences),
+                'max_confidence': np.max(confidences),
+                'avg_ref_similarity': np.mean(ref_similarities) if ref_similarities else 0.0,
+                'std_ref_similarity': np.std(ref_similarities) if ref_similarities else 0.0
+            }
+            
+            logger.info(f"质量分数: {avg_confidence:.4f} (±{stats['std_confidence']:.4f})")
+            logger.info(f"序列长度: {stats['avg_length']:.1f} (±{stats['std_length']:.1f})")
+            logger.info(f"唯一序列: {stats['unique_sequences']}/{num_sequences}")
+            if ref_similarities:
+                logger.info(f"参考相似性: {stats['avg_ref_similarity']:.3f} (±{stats['std_ref_similarity']:.3f})")
+            
+            return avg_confidence, sequences, stats
+            
+        except Exception as e:
+            logger.error(f"条件生成测试失败: {e}")
+            return 0.0, [], {}
+    
+    def _calculate_similarity(self, seq1: str, seq2: str) -> float:
+        """计算两个序列的相似性（简单的氨基酸匹配率）"""
+        if not seq1 or not seq2:
+            return 0.0
+        
+        # 简单的局部对齐相似性计算
+        min_len = min(len(seq1), len(seq2))
+        max_len = max(len(seq1), len(seq2))
+        
+        # 计算最佳局部匹配
+        best_match = 0
+        for i in range(len(seq1) - min_len + 1):
+            for j in range(len(seq2) - min_len + 1):
+                matches = sum(1 for k in range(min_len) 
+                            if i+k < len(seq1) and j+k < len(seq2) and seq1[i+k] == seq2[j+k])
+                best_match = max(best_match, matches)
+        
+        return best_match / max_len if max_len > 0 else 0.0
+    
     def optimize_parameters(self) -> Tuple[Dict, List[Dict]]:
         """优化参数，返回最佳参数和完整结果"""
         logger.info("🚀 开始全面参数优化...")
@@ -281,6 +390,127 @@ class SequenceOptimizer:
         # 显示Top 5结果
         logger.info(f"\n🏅 Top 5 配置:")
         for i, result in enumerate(top_results[:5], 1):
+            params_str = f"T={result['temperature']}"
+            if result['param_name'] and result['param_value'] is not None:
+                params_str += f", {result['param_name']}={result['param_value']}"
+            
+            logger.info(f"  {i}. {result['method'].upper()}: {params_str} - Score: {result['avg_confidence']:.4f}")
+        
+        return best_config, all_results
+    
+    def optimize_with_references(self, selected_refs: List[str] = None) -> Tuple[Dict, List[Dict]]:
+        """使用参考序列进行条件生成优化"""
+        if selected_refs is None:
+            # 默认选择几个代表性的参考序列
+            selected_refs = ["Magainin-2", "LL-37", "Melittin", "Indolicidin"]
+        
+        logger.info("🧬 开始参考序列条件生成优化...")
+        logger.info(f"📋 使用参考序列: {', '.join(selected_refs)}")
+        
+        # 获取参考序列
+        ref_sequences = [self.reference_sequences[name] for name in selected_refs if name in self.reference_sequences]
+        if not ref_sequences:
+            raise ValueError("未找到有效的参考序列")
+        
+        logger.info(f"🎯 参考序列详情:")
+        for name, seq in zip(selected_refs, ref_sequences):
+            if name in self.reference_sequences:
+                logger.info(f"  {name}: {seq} (长度: {len(seq)})")
+        
+        all_results = []
+        best_score = 0.0
+        best_config = None
+        
+        # 只测试效果较好的采样方法和参数范围（缩小搜索空间）
+        focused_configs = [
+            {
+                'method': 'diverse',
+                'param_name': 'diversity_strength',
+                'param_range': [0.2, 0.3, 0.4, 0.5]  # 重点测试中等多样性
+            },
+            {
+                'method': 'top_k', 
+                'param_name': 'k',
+                'param_range': [8, 10, 12, 15]  # 重点测试中等K值
+            },
+            {
+                'method': 'nucleus',
+                'param_name': 'p', 
+                'param_range': [0.85, 0.9, 0.92, 0.95]  # 重点测试高置信度范围
+            }
+        ]
+        
+        focused_temperature_range = [0.8, 1.0, 1.1, 1.2, 1.3]  # 重点测试中等温度
+        
+        # 计算总组合数
+        total_combinations = 0
+        for config in focused_configs:
+            total_combinations += len(focused_temperature_range) * len(config['param_range'])
+        
+        current_combination = 0
+        
+        # 遍历采样方法
+        for config in focused_configs:
+            method = config['method']
+            param_name = config['param_name']
+            param_range = config['param_range']
+            
+            logger.info(f"\n🔬 测试条件生成方法: {method.upper()}")
+            logger.info("=" * 50)
+            
+            # 遍历参数组合
+            for temperature in focused_temperature_range:
+                for param_value in param_range:
+                    current_combination += 1
+                    
+                    logger.info(f"进度: {current_combination}/{total_combinations}")
+                    
+                    # 测试条件生成
+                    avg_confidence, sequences, stats = self.test_conditional_generation(
+                        temperature=temperature,
+                        sampling_method=method,
+                        param_name=param_name,
+                        param_value=param_value,
+                        reference_sequences=ref_sequences,
+                        num_sequences=12  # 条件生成测试序列数
+                    )
+                    
+                    # 记录结果
+                    result = {
+                        'method': method,
+                        'temperature': temperature,
+                        'param_name': param_name,
+                        'param_value': param_value,
+                        'avg_confidence': avg_confidence,
+                        'stats': stats,
+                        'num_sequences': len(sequences),
+                        'reference_sequences': selected_refs,
+                        'generation_type': 'conditional'
+                    }
+                    
+                    all_results.append(result)
+                    
+                    # 检查是否是最佳结果
+                    if avg_confidence > best_score:
+                        best_score = avg_confidence
+                        best_config = result.copy()
+                        
+                        params_str = f"T={temperature}"
+                        if param_name and param_value is not None:
+                            params_str += f", {param_name}={param_value}"
+                        
+                        logger.info(f"🎯 发现更好的条件生成参数: {method.upper()} - {params_str}, Score={avg_confidence:.4f}")
+        
+        # 按分数排序
+        all_results.sort(key=lambda x: x['avg_confidence'], reverse=True)
+        
+        logger.info(f"\n✅ 条件生成优化完成!")
+        logger.info(f"🏆 最佳条件生成配置: {best_config['method'].upper()}")
+        logger.info(f"📊 最佳分数: {best_score:.4f}")
+        
+        # 显示Top 5条件生成结果
+        logger.info(f"\n🏅 Top 5 条件生成配置:")
+        for i, result in enumerate(all_results[:5], 1):
             params_str = f"T={result['temperature']}"
             if result['param_name'] and result['param_value'] is not None:
                 params_str += f", {result['param_name']}={result['param_value']}"
@@ -416,38 +646,118 @@ class SequenceOptimizer:
 
 def main():
     """主函数"""
-    logger.info("🚀 开始Amplify-Synth全面参数优化和序列生成")
+    import sys
+    
+    # 检查命令行参数选择模式
+    mode = "unconditional"  # 默认无条件生成
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "conditional":
+            mode = "conditional"
+        elif sys.argv[1] == "both":
+            mode = "both"
+    
+    logger.info("🚀 开始Amplify-Synth参数优化和序列生成")
+    logger.info(f"🎯 运行模式: {mode.upper()}")
+    
+    if mode == "unconditional":
+        logger.info("📋 运行无条件生成优化...")
+    elif mode == "conditional":
+        logger.info("📋 运行条件生成优化...")
+    else:
+        logger.info("📋 运行完整对比实验（无条件 + 条件生成）...")
     
     try:
         # 初始化优化器
         optimizer = SequenceOptimizer(device='cpu')
         
-        # 显示搜索空间信息
-        total_combinations = 0
-        for config in optimizer.sampling_configs:
-            combinations = len(optimizer.temperature_range) * len(config['param_range'])
-            total_combinations += combinations
-            logger.info(f"📋 {config['method'].upper()}: {len(optimizer.temperature_range)} 温度 × {len(config['param_range'])} 参数 = {combinations} 组合")
+        # 显示可用参考序列
+        if mode in ["conditional", "both"]:
+            logger.info(f"\n📖 可用参考序列:")
+            for name, seq in optimizer.reference_sequences.items():
+                logger.info(f"  {name:15s}: {seq[:30]}{'...' if len(seq) > 30 else ''} (长度: {len(seq)})")
         
-        logger.info(f"🎯 总计测试组合: {total_combinations}")
-        logger.info(f"⏱️  预估时间: {total_combinations * 0.5:.1f} 分钟 (假设每组合30秒)")
+        all_results = []
         
-        # 全面参数优化
-        best_config, all_results = optimizer.optimize_parameters()
+        # 无条件生成优化
+        if mode in ["unconditional", "both"]:
+            logger.info(f"\n" + "="*60)
+            logger.info("🔬 第一阶段: 无条件生成优化")
+            logger.info("="*60)
+            
+            # 显示搜索空间信息
+            total_combinations = 0
+            for config in optimizer.sampling_configs:
+                combinations = len(optimizer.temperature_range) * len(config['param_range'])
+                total_combinations += combinations
+                logger.info(f"📋 {config['method'].upper()}: {len(optimizer.temperature_range)} 温度 × {len(config['param_range'])} 参数 = {combinations} 组合")
+            
+            logger.info(f"🎯 无条件生成总计测试组合: {total_combinations}")
+            logger.info(f"⏱️  预估时间: {total_combinations * 0.5:.1f} 分钟")
+            
+            # 无条件参数优化
+            best_unconditional, unconditional_results = optimizer.optimize_parameters()
+            all_results.extend(unconditional_results)
+            
+            logger.info(f"\n✅ 无条件生成最佳配置:")
+            params_str = f"T={best_unconditional['temperature']}"
+            if best_unconditional['param_name'] and best_unconditional['param_value'] is not None:
+                params_str += f", {best_unconditional['param_name']}={best_unconditional['param_value']}"
+            logger.info(f"   方法: {best_unconditional['method'].upper()}")
+            logger.info(f"   参数: {params_str}")
+            logger.info(f"   分数: {best_unconditional['avg_confidence']:.4f}")
+        
+        # 条件生成优化
+        best_conditional = None
+        if mode in ["conditional", "both"]:
+            logger.info(f"\n" + "="*60)
+            logger.info("🧬 第二阶段: 条件生成优化")
+            logger.info("="*60)
+            
+            # 条件生成优化
+            best_conditional, conditional_results = optimizer.optimize_with_references()
+            all_results.extend(conditional_results)
+            
+            logger.info(f"\n✅ 条件生成最佳配置:")
+            params_str = f"T={best_conditional['temperature']}"
+            if best_conditional['param_name'] and best_conditional['param_value'] is not None:
+                params_str += f", {best_conditional['param_name']}={best_conditional['param_value']}"
+            logger.info(f"   方法: {best_conditional['method'].upper()}")
+            logger.info(f"   参数: {params_str}")
+            logger.info(f"   分数: {best_conditional['avg_confidence']:.4f}")
+            logger.info(f"   参考序列: {', '.join(best_conditional['reference_sequences'])}")
+        
+        # 选择最终的最佳配置
+        if mode == "unconditional":
+            final_best_config = best_unconditional
+        elif mode == "conditional":
+            final_best_config = best_conditional
+        else:  # both
+            # 比较两种模式的最佳结果
+            if best_conditional['avg_confidence'] > best_unconditional['avg_confidence']:
+                final_best_config = best_conditional
+                logger.info(f"\n🏆 条件生成获胜! (分数: {best_conditional['avg_confidence']:.4f} vs {best_unconditional['avg_confidence']:.4f})")
+            else:
+                final_best_config = best_unconditional
+                logger.info(f"\n🏆 无条件生成获胜! (分数: {best_unconditional['avg_confidence']:.4f} vs {best_conditional['avg_confidence']:.4f})")
         
         # 使用最佳配置生成最终序列
+        logger.info(f"\n" + "="*60)
+        logger.info("🎯 最终序列生成")
+        logger.info("="*60)
+        
         final_sequences = optimizer.generate_final_sequences(
-            best_config=best_config,
-            num_sequences=25  # 增加到25条
+            best_config=final_best_config,
+            num_sequences=25
         )
         
         # 保存所有结果
         exp_file, seq_file, fasta_file, report_file = optimizer.save_results(
-            final_sequences, best_config, all_results
+            final_sequences, final_best_config, all_results
         )
         
         # 输出统计信息
-        logger.info("\n📊 生成统计:")
+        logger.info("\n📊 最终序列统计:")
+        logger.info(f"  - 生成模式: {final_best_config.get('generation_type', 'unconditional').upper()}")
         logger.info(f"  - 序列数量: {len(final_sequences)}")
         logger.info(f"  - 平均长度: {np.mean([len(seq['sequence']) for seq in final_sequences]):.1f}")
         logger.info(f"  - 最高质量分数: {final_sequences[0]['quality_score']:.4f}")
@@ -455,25 +765,19 @@ def main():
         logger.info(f"  - 平均质量分数: {np.mean([seq['quality_score'] for seq in final_sequences]):.4f}")
         logger.info(f"  - 唯一序列: {len(set(seq['sequence'] for seq in final_sequences))}/{len(final_sequences)}")
         
-        # 按采样方法统计Top结果
-        logger.info("\n🏅 各采样方法最佳结果:")
-        method_best = {}
-        for result in all_results:
-            method = result['method']
-            if method not in method_best or result['avg_confidence'] > method_best[method]['avg_confidence']:
-                method_best[method] = result
+        # 如果是条件生成，显示参考序列信息
+        if final_best_config.get('generation_type') == 'conditional':
+            logger.info(f"  - 参考序列: {', '.join(final_best_config['reference_sequences'])}")
         
-        for method, result in method_best.items():
-            params_str = f"T={result['temperature']}"
-            if result['param_name'] and result['param_value'] is not None:
-                params_str += f", {result['param_name']}={result['param_value']}"
-            logger.info(f"  {method.upper():8s}: {params_str:25s} Score: {result['avg_confidence']:.4f}")
-        
-        print(f"\n🎉 全面优化完成! 结果文件:")
+        print(f"\n🎉 优化完成! 结果文件:")
         print(f"  📊 实验数据: {exp_file}")
         print(f"  🧬 序列数据: {seq_file}")
         print(f"  📄 FASTA文件: {fasta_file}")
         print(f"  📋 分析报告: {report_file}")
+        print(f"\n💡 使用方法:")
+        print(f"  无条件生成: python optimize_generation.py")
+        print(f"  条件生成:   python optimize_generation.py conditional")
+        print(f"  完整对比:   python optimize_generation.py both")
         
     except Exception as e:
         logger.error(f"❌ 程序执行失败: {e}")
