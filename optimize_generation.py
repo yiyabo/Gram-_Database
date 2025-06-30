@@ -32,25 +32,26 @@ class SequenceOptimizer:
         self.device = 'cpu'
         logger.info(f"使用设备: {self.device}（生成服务内部设备检测优先）")
         
-        # 推荐的参考抗菌肽序列
+        # APD数据库天然抗菌肽参考序列（革兰氏阴性菌活性）
         self.reference_sequences = {
-            # 经典抗菌肽
-            "Magainin-2": "GIGKFLHSAKKFGKAFVGEIMNS",
-            "Cecropin A": "KWKLFKKIEKVGQNIRDGIIKAGPAVAVVGQATQIAK", 
-            "Melittin": "GIGAVLKVLTTGLPALISWIKRKRQQ",
-            "LL-37": "LLGDFFRKSKEKIGKEFKRIVQRIKDFLRNLVPRTES",
+            # 短肽类（15-20aa）
+            "AP00007": "GNNRPVYIPQPRPPHPRL",                    # 18aa
+            "AP00168": "GRPNPVNNKPTPHPRL",                      # 16aa  
+            "AP00169": "GRPNPVNTKPTPYPRL",                      # 16aa
+            "AP00142": "GLKKLLGKLLKKLGKLLLK",                   # 19aa
             
-            # 短肽类
-            "Nisin": "ITSISLCTPGCKTGALMGCNMKTATCHCSIHVSK",
-            "Defensin": "GFGCPNNYQCHRHCKSIPGRYGGYCRAFEGY",
+            # 中等长度（25-35aa）
+            "AP00051": "GIGSAILSAGKSALKGLAKGLAEHFAN",           # 26aa
+            "AP00126": "GGLKKLGKKLEGVGKRVFKASEKALPVAVGIKALG",   # 33aa
+            "AP00129": "GWLKKIGKKIERVGQNTRDATVKGLEVAQQAANVAATVR", # 36aa
             
-            # 人工设计肽
-            "Synthetic-1": "KLKLLLLLKLKLLLKLK",
-            "Synthetic-2": "RWGRWGRWGRWG",
+            # 富含脯氨酸的长肽（40+aa）
+            "AP00009": "RFRPPIRRPPIRPPFYPPFRPPIRPPIFPPIRPPFRPPLGPFP",        # 43aa
+            "AP00010": "RRIRPRPPRLPRPRPRPLPFPRPGPRPIPRPLPFPRPGPRPIPRPLPFPRPGPRPIPRPL", # 59aa
             
-            # 来源于天然蛋白
-            "Lactoferricin B": "FKCRRWQWRMKKLGAPSITCVRRAF",
-            "Indolicidin": "ILPWKWPWWPWRR"
+            # 富含半胱氨酸的结构肽（35-40aa）  
+            "AP00036": "DFASCHTNGGICLPNRCPGHMIQIGICFRPRVKCCRSW",  # 38aa
+            "AP00040": "QVVRNPQSCRWNMGVCIPISCPGNMRQIGTCFGPRVPCCRRW", # 39aa
         }
         
         # 初始化生成服务
@@ -401,8 +402,13 @@ class SequenceOptimizer:
     def optimize_with_references(self, selected_refs: List[str] = None) -> Tuple[Dict, List[Dict]]:
         """使用参考序列进行条件生成优化"""
         if selected_refs is None:
-            # 默认选择几个代表性的参考序列
-            selected_refs = ["Magainin-2", "LL-37", "Melittin", "Indolicidin"]
+            # 默认选择几个代表性的APD天然抗菌肽（不同长度和特征）
+            selected_refs = [
+                "AP00007",  # 短肽，富含脯氨酸
+                "AP00051",  # 中等长度，α-螺旋结构
+                "AP00126",  # 长肽，富含赖氨酸
+                "AP00036"   # 富含半胱氨酸，结构复杂
+            ]
         
         logger.info("🧬 开始参考序列条件生成优化...")
         logger.info(f"📋 使用参考序列: {', '.join(selected_refs)}")
