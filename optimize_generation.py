@@ -566,8 +566,13 @@ class SequenceOptimizer:
         """保存结果到文件"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
+        # 创建结果目录
+        import os
+        result_dir = "result"
+        os.makedirs(result_dir, exist_ok=True)
+        
         # 保存完整实验数据
-        experiment_file = f"amplify_synth_experiment_{timestamp}.json"
+        experiment_file = os.path.join(result_dir, f"amplify_synth_experiment_{timestamp}.json")
         experiment_data = {
             'experiment_info': {
                 'timestamp': timestamp,
@@ -586,7 +591,7 @@ class SequenceOptimizer:
             json.dump(experiment_data, f, indent=2, ensure_ascii=False)
         
         # 保存最终序列数据
-        sequences_file = f"amplify_synth_sequences_{timestamp}.json"
+        sequences_file = os.path.join(result_dir, f"amplify_synth_sequences_{timestamp}.json")
         sequences_data = {
             'generation_info': {
                 'timestamp': timestamp,
@@ -601,7 +606,7 @@ class SequenceOptimizer:
             json.dump(sequences_data, f, indent=2, ensure_ascii=False)
         
         # 保存FASTA格式
-        fasta_file = f"amplify_synth_sequences_{timestamp}.fasta"
+        fasta_file = os.path.join(result_dir, f"amplify_synth_sequences_{timestamp}.fasta")
         method = best_config['method']
         with open(fasta_file, 'w') as f:
             for i, seq_data in enumerate(sequences, 1):
@@ -610,7 +615,7 @@ class SequenceOptimizer:
                 f.write(f"{seq_data['sequence']}\n")
         
         # 保存Top参数配置的简要报告
-        report_file = f"amplify_synth_report_{timestamp}.txt"
+        report_file = os.path.join(result_dir, f"amplify_synth_report_{timestamp}.txt")
         with open(report_file, 'w', encoding='utf-8') as f:
             f.write("🧬 Amplify-Synth 参数优化报告\n")
             f.write("=" * 50 + "\n\n")
