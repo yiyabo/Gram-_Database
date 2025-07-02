@@ -54,7 +54,7 @@ class AttentionPooling(nn.Module):
 
 class ContrastiveLoss(nn.Module):
     """对比学习损失函数 - 恢复使用旧的、经过验证的稳定版本"""
-    def __init__(self, temperature: float = 0.07):
+    def __init__(self, temperature: float = 0.05): # 降低温度，增加任务难度
         super().__init__()
         self.temperature = temperature
         

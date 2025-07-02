@@ -429,7 +429,7 @@ if __name__ == '__main__':
             "use_mixed_precision": True,
             "use_contrastive": True,
             "freeze_esm": False,
-            "esm_learning_rate": 1e-5,
+            "esm_learning_rate": 2e-6, # 显著降低学习率，进行更精细的微调
             "contrastive_loss_weight": 0.1,
             "contrastive_positive_path": "enhanced_architecture/gram_neg_only.txt",
             "contrastive_negative_path": "enhanced_architecture/gram_pos_only.txt",
