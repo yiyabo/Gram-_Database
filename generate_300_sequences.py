@@ -43,7 +43,7 @@ def generate_sequences(num_sequences=300, temperature=0.8, diversity_strength=1.
     
     result = service.generate_sequences(
         num_sequences=num_sequences,
-        seq_length=40,  # 固定长度40
+        seq_length=30,  # 固定长度40
         sampling_method="diverse",
         temperature=temperature,
         diversity_strength=diversity_strength
