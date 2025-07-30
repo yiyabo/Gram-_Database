@@ -13,12 +13,12 @@ import math
 # 导入统一的词汇表和序列处理函数
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from gram_predictor.data_loader import AMINO_ACID_VOCAB, VOCAB_TO_AA, sequence_to_tokens, tokens_to_sequence
 
 class D3PMScheduler:
-    """噪声调度器，用于控制扩散过程中的噪声水平"""
+    """噪声调度器if __name__ == "__main__":中的噪声水平"""
     
     def __init__(self, num_timesteps: int = 1000, vocab_size: int = None, 
                  schedule_type: str = 'linear'):
@@ -584,7 +584,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from gram_predictor.data_loader import AMINO_ACID_VOCAB, VOCAB_TO_AA, sequence_to_tokens, tokens_to_sequence
+from ..data_loader import AMINO_ACID_VOCAB, VOCAB_TO_AA, sequence_to_tokens, tokens_to_sequence
 
 
 if __name__ == "__main__":

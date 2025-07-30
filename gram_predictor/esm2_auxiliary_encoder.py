@@ -14,6 +14,11 @@ from transformers import EsmModel, EsmTokenizer
 import logging
 from typing import List, Tuple, Optional
 
+# 添加项目根目录到路径
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # 导入统一配置
 from gram_predictor.config.model_config import ESM2Config
 

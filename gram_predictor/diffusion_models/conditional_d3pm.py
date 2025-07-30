@@ -13,6 +13,12 @@ from typing import Optional, List
 
 # 导入现有的调度器和词汇表
 from .d3pm_diffusion import D3PMScheduler
+
+# 添加项目根目录到路径
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 from gram_predictor.data_loader import AMINO_ACID_VOCAB
 
 import logging

@@ -9,6 +9,11 @@ import torch
 import numpy as np
 import logging
 from typing import List, Optional, Dict, Any
+
+# 添加项目根目录到路径
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from gram_predictor.config.model_config import get_config
 from gram_predictor.esm2_auxiliary_encoder import ESM2AuxiliaryEncoder
 from gram_predictor.diffusion_models.d3pm_diffusion import D3PMDiffusion, D3PMScheduler, D3PMUNet
