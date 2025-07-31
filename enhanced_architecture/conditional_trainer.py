@@ -238,27 +238,38 @@ class ConditionalTrainer:
             progress_bar = tqdm(zip(*loaders.values()), desc=f"Epoch {epoch + 1}/{self.config['epochs']}", total=len(self.train_loader))
             
             epoch_losses = {"diffusion": [], "contrastive": []}
+            
+            # 梯度累积计数器
+            accumulation_steps = self.config.get("gradient_accumulation_steps", 1)
+            step_count = 0
 
             for batch_tuple in progress_bar:
                 batch_dict = dict(zip(loaders.keys(), batch_tuple))
 
                 # --- 1. 扩散模型训练步骤 ---
                 diffusion_batch = batch_dict['diffusion']
-                self.diffusion_optimizer.zero_grad()
                 
                 target_tokens = diffusion_batch['target_tokens']
                 # 核心修改：在训练扩散模型时，不传入条件特征，进行无条件训练
                 diffusion_loss = self.diffusion_model.training_loss(target_tokens, None)
+                
+                # 梯度累积：损失除以累积步数
+                diffusion_loss = diffusion_loss / accumulation_steps
                 diffusion_loss.backward()
-                # 添加梯度裁剪
-                torch.nn.utils.clip_grad_norm_(self.diffusion_model.model.parameters(), max_norm=1.0)
-                self.diffusion_optimizer.step()
-                epoch_losses["diffusion"].append(diffusion_loss.item())
+                
+                step_count += 1
+                epoch_losses["diffusion"].append(diffusion_loss.item() * accumulation_steps)  # 记录原始损失
+                
+                # 每accumulation_steps步或最后一步更新参数
+                if step_count % accumulation_steps == 0 or step_count == len(self.train_loader):
+                    # 添加梯度裁剪
+                    torch.nn.utils.clip_grad_norm_(self.diffusion_model.model.parameters(), max_norm=1.0)
+                    self.diffusion_optimizer.step()
+                    self.diffusion_optimizer.zero_grad()
 
                 # --- 2. 对比学习训练步骤 ---
                 if self.esm_optimizer and 'contrastive' in batch_dict:
                     contrastive_batch = batch_dict['contrastive']
-                    self.esm_optimizer.zero_grad()
                     
                     contrastive_loss = self.feature_extractor.compute_contrastive_loss(
                         contrastive_batch["positive"],
@@ -268,11 +279,18 @@ class ConditionalTrainer:
                     # 加权并反向传播
                     contrastive_weight = self.config.get("contrastive_loss_weight", 0.1)
                     weighted_contrastive_loss = contrastive_loss * contrastive_weight
+                    
+                    # 梯度累积：损失除以累积步数
+                    weighted_contrastive_loss = weighted_contrastive_loss / accumulation_steps
                     weighted_contrastive_loss.backward()
-                    # 添加梯度裁剪
-                    torch.nn.utils.clip_grad_norm_(self.feature_extractor.parameters(), max_norm=1.0)
-                    self.esm_optimizer.step()
                     epoch_losses["contrastive"].append(contrastive_loss.item())
+                    
+                    # 每accumulation_steps步或最后一步更新参数
+                    if step_count % accumulation_steps == 0 or step_count == len(self.train_loader):
+                        # 添加梯度裁剪
+                        torch.nn.utils.clip_grad_norm_(self.feature_extractor.parameters(), max_norm=1.0)
+                        self.esm_optimizer.step()
+                        self.esm_optimizer.zero_grad()
 
                 # 更新进度条
                 progress_bar.set_postfix(
