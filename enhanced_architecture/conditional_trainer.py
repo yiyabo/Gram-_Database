@@ -58,7 +58,8 @@ class ConditionalTrainer:
         self.feature_extractor = ConditionalESM2FeatureExtractor(
             model_name=self.config.get("esm_model", "facebook/esm2_t8_215M_UR50D"),
             condition_dim=self.config["condition_dim"],
-            use_layers=self.config.get("esm_layers", [2, 4, 6])
+            use_layers=self.config.get("esm_layers", [2, 4, 6]),
+            learn_prototypes=self.config.get("learn_prototypes", True)  # 启用原型学习
         ).to(self.device)
         
         # 2. 扩散模型
@@ -352,6 +353,7 @@ class ConditionalTrainer:
         torch.save({
             'epoch': self.current_epoch,
             'model_state_dict': model_state_dict,
+            'feature_extractor_state_dict': self.feature_extractor.state_dict(),  # 保存特征提取器权重
             'diffusion_optimizer_state_dict': self.diffusion_optimizer.state_dict(),
             'esm_optimizer_state_dict': self.esm_optimizer.state_dict() if self.esm_optimizer else None,
             'diffusion_lr_scheduler_state_dict': self.diffusion_lr_scheduler.state_dict(),
@@ -376,6 +378,14 @@ class ConditionalTrainer:
             else self.diffusion_model.model
             
         model_to_load.load_state_dict(checkpoint['model_state_dict'])
+        
+        # 加载特征提取器权重
+        if 'feature_extractor_state_dict' in checkpoint:
+            self.feature_extractor.load_state_dict(checkpoint['feature_extractor_state_dict'])
+            logger.info("✅ 特征提取器权重加载成功")
+        else:
+            logger.warning("⚠️ 检查点中未找到特征提取器权重")
+        
         self.diffusion_optimizer.load_state_dict(checkpoint['diffusion_optimizer_state_dict'])
         self.diffusion_lr_scheduler.load_state_dict(checkpoint['diffusion_lr_scheduler_state_dict'])
         
@@ -451,6 +461,9 @@ if __name__ == '__main__':
             "contrastive_loss_weight": 0.1,
             "contrastive_positive_path": "enhanced_architecture/gram_neg_only.txt",
             "contrastive_negative_path": "enhanced_architecture/gram_pos_only.txt",
+            
+            # --- 原型学习配置 ---
+            "learn_prototypes": True,  # 启用原型学习
         }
 
     # --- 以下为测试执行逻辑 ---

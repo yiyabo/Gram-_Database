@@ -147,6 +147,14 @@ def main():
     parser.add_argument("--prediction_output", type=str, default="predictions/generated_peptides_predictions.txt",
                         help="保存预测结果的文件。")
     
+    # 新增原型生成相关参数
+    parser.add_argument("--use_prototype", action="store_true",
+                        help="使用学习到的原型特征进行生成，而不是参考序列。")
+    parser.add_argument("--prototype_type", type=str, default="positive", choices=["positive", "negative"],
+                        help="使用的原型类型：positive（抗菌肽）或negative（非抗菌肽）。")
+    parser.add_argument("--interpolation_alpha", type=float, default=None,
+                        help="如果设置，将使用正负原型的插值特征，alpha=0为负原型，alpha=1为正原型。")
+    
     args = parser.parse_args()
 
     # --- 1. 设置环境和配置 ---
@@ -169,26 +177,53 @@ def main():
         diffusion_model = load_trained_model(model_load_config, args.checkpoint, device)
         feature_extractor = ConditionalESM2FeatureExtractor(
             model_name=model_load_config["esm_model"],
-            condition_dim=model_load_config["condition_dim"]
+            condition_dim=model_load_config["condition_dim"],
+            learn_prototypes=True  # 启用原型学习
         ).to(device)
+        
+        # 加载特征提取器的权重（如果检查点中包含）
+        checkpoint = torch.load(args.checkpoint, map_location=device, weights_only=False)
+        if 'feature_extractor_state_dict' in checkpoint:
+            feature_extractor.load_state_dict(checkpoint['feature_extractor_state_dict'])
+            logger.info("✅ 特征提取器权重加载成功")
+        else:
+            logger.warning("⚠️ 检查点中未找到特征提取器权重，使用随机初始化")
+            
     except Exception as e:
         logger.critical(f"无法加载模型或特征提取器: {e}")
         return
 
     # --- 3. 准备生成条件 ---
-    logger.info(f"正在准备 {args.num_references} 条参考序列作为生成条件...")
-    reference_files = [
-        "enhanced_architecture/gram_neg_only.txt",
-        "enhanced_architecture/gram_both.txt"
-    ]
-    ref_sequences = get_reference_sequences(reference_files, args.num_references)
-    logger.info("参考序列: " + ", ".join(ref_sequences))
-    
-    # 提取条件特征，并取平均作为最终条件
-    condition_features = feature_extractor.extract_condition_features(ref_sequences)
-    final_condition = condition_features.mean(dim=0).unsqueeze(0) # [1, condition_dim]
-    # 复制条件以匹配要生成的序列数量
-    final_condition = final_condition.repeat(args.num_sequences, 1)
+    if args.use_prototype:
+        logger.info(f"使用学习到的原型特征进行生成...")
+        
+        if args.interpolation_alpha is not None:
+            # 使用插值特征
+            logger.info(f"使用插值特征，alpha={args.interpolation_alpha}")
+            final_condition = feature_extractor.get_interpolated_condition(args.interpolation_alpha)
+        else:
+            # 使用单一原型
+            logger.info(f"使用{args.prototype_type}原型特征")
+            final_condition = feature_extractor.get_prototype_condition(args.prototype_type, use_ema=True)
+        
+        # 复制条件以匹配要生成的序列数量
+        final_condition = final_condition.repeat(args.num_sequences, 1)
+        
+    else:
+        # 传统的参考序列方式
+        logger.info(f"正在准备 {args.num_references} 条参考序列作为生成条件...")
+        reference_files = [
+            "enhanced_architecture/gram_neg_only.txt",
+            "enhanced_architecture/gram_both.txt"
+        ]
+        ref_sequences = get_reference_sequences(reference_files, args.num_references)
+        logger.info("参考序列: " + ", ".join(ref_sequences))
+        
+        # 提取条件特征，并取平均作为最终条件
+        condition_features = feature_extractor.extract_condition_features(ref_sequences)
+        final_condition = condition_features.mean(dim=0).unsqueeze(0) # [1, condition_dim]
+        # 复制条件以匹配要生成的序列数量
+        final_condition = final_condition.repeat(args.num_sequences, 1)
 
     # --- 4. 生成序列 ---
     logger.info(f"正在生成 {args.num_sequences} 条长度在 {args.min_len}-{args.max_len} 之间的序列...")

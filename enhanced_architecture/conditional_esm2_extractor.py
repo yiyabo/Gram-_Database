@@ -89,7 +89,8 @@ class ConditionalESM2FeatureExtractor(nn.Module):
                  cache_dir: str = "./esm2_cache",
                  max_cache_size: int = 10000,
                  freeze_esm: bool = False, # 新增：是否冻结ESM-2
-                 use_contrastive: bool = True): # 新增：是否使用对比学习
+                 use_contrastive: bool = True, # 新增：是否使用对比学习
+                 learn_prototypes: bool = True): # 新增：是否学习原型特征
         super().__init__()
         
         self.model_name = model_name
@@ -98,6 +99,7 @@ class ConditionalESM2FeatureExtractor(nn.Module):
         self.pooling_strategy = pooling_strategy
         self.cache_dir = cache_dir
         self.max_cache_size = max_cache_size
+        self.learn_prototypes = learn_prototypes
         
         # 创建缓存目录
         os.makedirs(cache_dir, exist_ok=True)
@@ -160,8 +162,27 @@ class ConditionalESM2FeatureExtractor(nn.Module):
                 nn.Linear(self.esm_dim, 128) # 对比学习通常使用较小的特征维度
             )
         
+        # === 原型特征学习组件 ===
+        if learn_prototypes:
+            # 可学习的原型特征
+            self.positive_prototype = nn.Parameter(torch.randn(condition_dim) * 0.1)
+            self.negative_prototype = nn.Parameter(torch.randn(condition_dim) * 0.1)
+            
+            # 原型更新的动量系数
+            self.prototype_momentum = 0.99
+            
+            # 注册缓冲区用于存储移动平均的原型
+            self.register_buffer('positive_prototype_ema', torch.zeros(condition_dim))
+            self.register_buffer('negative_prototype_ema', torch.zeros(condition_dim))
+            
+            # 原型损失权重
+            self.prototype_loss_weight = 0.1
+            
+            logger.info("✅ 原型特征学习组件已初始化")
+        
         logger.info(f"ConditionalESM2FeatureExtractor初始化完成")
         logger.info(f"使用层: {use_layers}, 条件维度: {condition_dim}")
+        logger.info(f"学习原型特征: {learn_prototypes}")
     
     def _compute_sequence_hash(self, sequences: List[str]) -> str:
         """计算序列列表的哈希值用于缓存"""
@@ -366,7 +387,92 @@ class ConditionalESM2FeatureExtractor(nn.Module):
         pos_features = self._encode_for_contrastive(positive_seqs)
         neg_features = self._encode_for_contrastive(negative_seqs)
         
-        return self.contrastive_loss_fn(pos_features, neg_features)
+        contrastive_loss = self.contrastive_loss_fn(pos_features, neg_features)
+        
+        # 如果启用了原型学习，添加原型损失
+        if hasattr(self, 'learn_prototypes') and self.learn_prototypes:
+            prototype_loss = self._compute_prototype_loss(positive_seqs, negative_seqs)
+            total_loss = contrastive_loss + self.prototype_loss_weight * prototype_loss
+            return total_loss
+        
+        return contrastive_loss
+    
+    def _compute_prototype_loss(self, positive_seqs: List[str], negative_seqs: List[str]) -> torch.Tensor:
+        """计算原型学习损失"""
+        # 提取正负样本的条件特征
+        pos_condition_features = self.extract_condition_features(positive_seqs)
+        neg_condition_features = self.extract_condition_features(negative_seqs)
+        
+        # 计算与原型的距离损失
+        pos_to_pos_proto = F.mse_loss(pos_condition_features,
+                                     self.positive_prototype.unsqueeze(0).expand_as(pos_condition_features))
+        neg_to_neg_proto = F.mse_loss(neg_condition_features,
+                                     self.negative_prototype.unsqueeze(0).expand_as(neg_condition_features))
+        
+        # 计算分离损失（正样本远离负原型，负样本远离正原型）
+        pos_to_neg_proto = F.mse_loss(pos_condition_features,
+                                     self.negative_prototype.unsqueeze(0).expand_as(pos_condition_features))
+        neg_to_pos_proto = F.mse_loss(neg_condition_features,
+                                     self.positive_prototype.unsqueeze(0).expand_as(neg_condition_features))
+        
+        # 聚类损失（样本向对应原型聚集）
+        cluster_loss = pos_to_pos_proto + neg_to_neg_proto
+        
+        # 分离损失（样本远离错误原型）- 使用margin loss
+        margin = 1.0
+        separation_loss = F.relu(margin - pos_to_neg_proto) + F.relu(margin - neg_to_pos_proto)
+        
+        # 更新EMA原型
+        with torch.no_grad():
+            pos_mean = pos_condition_features.mean(dim=0)
+            neg_mean = neg_condition_features.mean(dim=0)
+            
+            self.positive_prototype_ema = (self.prototype_momentum * self.positive_prototype_ema +
+                                         (1 - self.prototype_momentum) * pos_mean)
+            self.negative_prototype_ema = (self.prototype_momentum * self.negative_prototype_ema +
+                                         (1 - self.prototype_momentum) * neg_mean)
+        
+        return cluster_loss + separation_loss
+    
+    def get_prototype_condition(self, target_type: str = "positive", use_ema: bool = True) -> torch.Tensor:
+        """获取学习到的原型条件特征
+        
+        Args:
+            target_type: "positive" 或 "negative"
+            use_ema: 是否使用EMA版本的原型
+        Returns:
+            prototype_condition: [1, condition_dim]
+        """
+        if not hasattr(self, 'learn_prototypes') or not self.learn_prototypes:
+            raise ValueError("原型学习未启用，请在初始化时设置 learn_prototypes=True")
+        
+        if use_ema:
+            if target_type == "positive":
+                return self.positive_prototype_ema.unsqueeze(0)
+            else:
+                return self.negative_prototype_ema.unsqueeze(0)
+        else:
+            if target_type == "positive":
+                return self.positive_prototype.unsqueeze(0)
+            else:
+                return self.negative_prototype.unsqueeze(0)
+    
+    def get_interpolated_condition(self, alpha: float = 0.5) -> torch.Tensor:
+        """获取正负原型之间的插值条件特征
+        
+        Args:
+            alpha: 插值系数，0=完全负样本，1=完全正样本
+        Returns:
+            interpolated_condition: [1, condition_dim]
+        """
+        if not hasattr(self, 'learn_prototypes') or not self.learn_prototypes:
+            raise ValueError("原型学习未启用")
+        
+        pos_proto = self.positive_prototype_ema
+        neg_proto = self.negative_prototype_ema
+        
+        interpolated = alpha * pos_proto + (1 - alpha) * neg_proto
+        return interpolated.unsqueeze(0)
 
 
 class ConditionalFeatureManager:
