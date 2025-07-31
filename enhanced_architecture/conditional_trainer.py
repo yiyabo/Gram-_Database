@@ -419,8 +419,8 @@ if __name__ == '__main__':
             "output_dir": "checkpoints_hybrid_650M",
             "pairing_strategy": "similarity",
             "num_references": 3,
-            "batch_size": 16,
-            "gradient_accumulation_steps": 1, # 650M模型不需要梯度累积
+            "batch_size": 4,  # 降低batch size避免OOM
+            "gradient_accumulation_steps": 4, # 使用梯度累积保持等效batch size=16
             "learning_rate": 5e-5,
             "epochs": 200,
             "save_interval": 5,
