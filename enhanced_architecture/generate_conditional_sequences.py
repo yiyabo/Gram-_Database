@@ -45,7 +45,7 @@ def load_trained_model(config, checkpoint_path, device):
         logger.error(f"检查点文件未找到: {checkpoint_path}")
         raise FileNotFoundError(f"检查点文件未找到: {checkpoint_path}")
         
-    checkpoint = torch.load(checkpoint_path, map_location=device)
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
     
     # 处理DataParallel包装的模型
     model_state_dict = checkpoint['model_state_dict']
