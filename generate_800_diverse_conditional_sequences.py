@@ -229,9 +229,32 @@ class DiverseConditionalSequenceGenerator:
         scheduler = D3PMScheduler(num_timesteps=self.model_config["num_timesteps"])
         self.diffusion_model = DiverseConditionalD3PMDiffusion(unet, scheduler, self.device)
         
-        # 3. 加载权重
+        # 3. 加载权重 - 智能检测键名
         try:
-            model_state_dict = checkpoint['model_state_dict']
+            # 检测可能的键名
+            possible_keys = ['model_state_dict', 'diffusion_model_state_dict', 'unet_state_dict', 'state_dict']
+            model_state_dict = None
+            
+            logger.info("检查点包含的键:")
+            for key in checkpoint.keys():
+                logger.info(f"  {key}")
+            
+            # 尝试找到正确的模型状态字典
+            for key in possible_keys:
+                if key in checkpoint:
+                    model_state_dict = checkpoint[key]
+                    logger.info(f"✅ 使用键名: {key}")
+                    break
+            
+            if model_state_dict is None:
+                # 如果没有找到标准键名，尝试直接使用检查点
+                if hasattr(checkpoint, 'state_dict'):
+                    model_state_dict = checkpoint.state_dict()
+                    logger.info("✅ 使用 checkpoint.state_dict()")
+                else:
+                    raise KeyError(f"未找到模型状态字典。可用键: {list(checkpoint.keys())}")
+            
+            # 处理DataParallel包装
             if list(model_state_dict.keys())[0].startswith('module.'):
                 from collections import OrderedDict
                 new_state_dict = OrderedDict()
@@ -239,12 +262,14 @@ class DiverseConditionalSequenceGenerator:
                     name = k[7:]  # 移除'module.'前缀
                     new_state_dict[name] = v
                 model_state_dict = new_state_dict
+                logger.info("✅ 移除了DataParallel前缀")
             
             self.diffusion_model.model.load_state_dict(model_state_dict)
             logger.info("✅ 扩散模型权重加载成功")
             
         except Exception as e:
             logger.error(f"❌ 模型权重加载失败: {e}")
+            logger.error(f"检查点文件结构: {list(checkpoint.keys())}")
             raise
         
         logger.info("🎯 所有模型组件加载完成")
