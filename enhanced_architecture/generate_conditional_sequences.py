@@ -47,8 +47,24 @@ def load_trained_model(config, checkpoint_path, device):
         
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
     
-    # 处理DataParallel包装的模型
-    model_state_dict = checkpoint['model_state_dict']
+    # 智能检测键名并处理DataParallel包装的模型
+    possible_keys = ['model_state_dict', 'diffusion_model_state_dict', 'unet_state_dict', 'state_dict']
+    model_state_dict = None
+    
+    logger.info("检查点包含的键:")
+    for key in checkpoint.keys():
+        logger.info(f"  {key}")
+    
+    # 尝试找到正确的模型状态字典
+    for key in possible_keys:
+        if key in checkpoint:
+            model_state_dict = checkpoint[key]
+            logger.info(f"✅ 使用键名: {key}")
+            break
+    
+    if model_state_dict is None:
+        raise KeyError(f"未找到模型状态字典。可用键: {list(checkpoint.keys())}")
+    
     if isinstance(diffusion_model.model, torch.nn.DataParallel):
         diffusion_model.model.module.load_state_dict(model_state_dict)
     else:
