@@ -87,6 +87,32 @@ sudo apt install unattended-upgrades
 | 🔴 SSL 证书错误 | 重新申请：`sudo certbot renew` |
 | 🔴 内存不足 | 增加 swap：`sudo fallocate -l 2G /swapfile` |
 | 🔴 模型加载失败 | 检查文件权限：`chmod -R 644 model/` |
+| 🔴 磁盘空间不足 | 使用轻量级版本：修改 `requirements.txt` 为轻量级依赖 |
+| 🔴 TensorFlow 太大 | 部署演示版本：使用 `lightweight_app.py` |
+
+### 🚨 磁盘空间不足解决方案
+
+如果遇到 `no space left on device` 错误：
+
+#### 方案 1：轻量级部署（推荐）
+
+```bash
+# 1. 切换到轻量级版本
+cp requirements_lightweight.txt requirements.txt
+
+# 2. 修改 Procfile
+echo "web: gunicorn lightweight_app:app --bind 0.0.0.0:\$PORT --workers 2" > Procfile
+
+# 3. 重新部署
+git add . && git commit -m "Switch to lightweight deployment"
+git push
+```
+
+#### 方案 2：升级云平台套餐
+
+- Railway: 升级到 Pro 计划 ($5/月)
+- Heroku: 使用 Standard-1X ($25/月)
+- DigitalOcean App Platform: Basic ($12/月)
 
 ## 💰 成本预估
 
@@ -100,6 +126,7 @@ sudo apt install unattended-upgrades
 ## 📞 获取帮助
 
 🆘 **遇到问题？**
+
 1. 检查 [部署日志](./DEPLOYMENT_GUIDE.md#故障排除)
 2. 搜索 [GitHub Issues](https://github.com/your-username/Gram-_Database/issues)
 3. 联系技术支持
