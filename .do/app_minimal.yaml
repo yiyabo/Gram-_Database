@@ -1,0 +1,24 @@
+# DigitalOcean App Platform 配置优化
+name: gram-predictor
+services:
+- name: web
+  source_dir: /
+  github:
+    repo: your-repo
+    branch: main
+  run_command: gunicorn cloud_minimal_app:app --bind 0.0.0.0:8080 --workers 2 --timeout 120
+  build_command: |
+    pip install --no-cache-dir -r requirements_cloud_minimal.txt
+    # 清理pip缓存减少磁盘占用
+    pip cache purge
+  environment_slug: python
+  instance_count: 1
+  instance_size_slug: basic-xxs  # 最小实例，24$/月可以运行多个
+  http_port: 8080
+  health_check:
+    http_path: /health
+  envs:
+  - key: FLASK_ENV
+    value: production
+  - key: PYTHONPATH
+    value: /app

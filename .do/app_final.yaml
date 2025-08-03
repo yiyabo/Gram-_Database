@@ -1,0 +1,16 @@
+name: antimicrobial-peptide-db
+services:
+- name: database-app
+  source_dir: /
+  github:
+    repo: yiyabo/Gram-_Database
+    branch: feature/separate-views
+    deploy_on_push: true
+  run_command: gunicorn database_app:app --bind 0.0.0.0:$PORT
+  environment_slug: python
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  routes:
+  - path: /
+  health_check:
+    http_path: /health

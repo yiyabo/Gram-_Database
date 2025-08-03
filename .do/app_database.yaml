@@ -1,0 +1,21 @@
+# DigitalOcean App Platform 配置 - 数据库版本
+name: gram-database
+services:
+- name: web
+  source_dir: /
+  github:
+    repo: your-repo
+    branch: main
+  run_command: gunicorn database_app:app --bind 0.0.0.0:8080 --workers 1
+  build_command: |
+    pip install --no-cache-dir -r requirements_database_only.txt
+    pip cache purge
+  environment_slug: python
+  instance_count: 1
+  instance_size_slug: basic-xxs  # 最小实例即可
+  http_port: 8080
+  health_check:
+    http_path: /health
+  envs:
+  - key: FLASK_ENV
+    value: production
