@@ -12,3 +12,4 @@ wandb>=0.12.0
 Flask>=2.0
 biopython>=1.79
 peptides>=0.3.0
+gunicorn>=20.0.0
