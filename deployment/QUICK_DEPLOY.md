@@ -115,14 +115,11 @@ sudo apt install unattended-upgrades
 #### 方案 1：轻量级部署（推荐）
 
 ```bash
-# 1. 切换到轻量级版本
-cp requirements_lightweight.txt requirements.txt
+# 如需轻量级部署，可以直接使用当前的 requirements.txt
+# 已经是精简版本
 
-# 2. 修改 Procfile
-echo "web: gunicorn lightweight_app:app --bind 0.0.0.0:\$PORT --workers 2" > Procfile
-
-# 3. 重新部署
-git add . && git commit -m "Switch to lightweight deployment"
+# 重新部署
+git add . && git commit -m "Switch to streamlined deployment"
 git push
 ```
 
