@@ -116,3 +116,6 @@ experiment_code/data/result_30.fasta
 experiment_code/data/VAE_Sequences.fasta
 experiment_code/data/result.fasta
 experiment_code/data/new.fasta
+data/database.fasta
+Draw.ipynb
+experiment_code/data/result.fasta
