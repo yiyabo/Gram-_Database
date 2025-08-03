@@ -1396,5 +1396,46 @@ def model_status():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/health')
+def health_check():
+    """健康检查端点，用于部署监控"""
+    try:
+        # 检查模型是否可用
+        model_available = True
+        try:
+            global hybrid_model
+            if hybrid_model is None:
+                model_available = False
+        except:
+            model_available = False
+        
+        # 检查生成服务状态
+        generation_available = True
+        try:
+            gen_service = get_generation_service()
+            if not gen_service.is_loaded:
+                generation_available = False
+        except:
+            generation_available = False
+        
+        status = {
+            'status': 'healthy' if model_available else 'degraded',
+            'timestamp': datetime.now().isoformat(),
+            'services': {
+                'prediction_model': 'available' if model_available else 'unavailable',
+                'generation_service': 'available' if generation_available else 'unavailable'
+            }
+        }
+        
+        status_code = 200 if model_available else 503
+        return jsonify(status), status_code
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'timestamp': datetime.now().isoformat(),
+            'error': str(e)
+        }), 500
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=8081)
