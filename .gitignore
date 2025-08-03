@@ -63,6 +63,7 @@ gram_predictor/models/*.pt
 gram_predictor/models/*.pth
 gram_predictor/models/*.h5
 gram_predictor/models/*.keras
+Gram_feature
 *.pt
 *.pth
 gram_predictor/charts/*.png
@@ -107,3 +108,11 @@ experiment_results/figures/feature_distribution_comparison.png
 experiment_results/shap_analysis/shap_summary_plot_rf.png
 experiment_results/figures/feature_distribution_comparison.png
 experiment_results/shap_analysis/shap_summary_plot_rf.png
+experiment_code/data/dsAMP_Generation.fasta
+experiment_code/data/Gan_Generate.fasta
+experiment_code/data/Multi-CGAN.fasta
+experiment_code/data/result.fasta
+experiment_code/data/result_30.fasta
+experiment_code/data/VAE_Sequences.fasta
+experiment_code/data/result.fasta
+experiment_code/data/new.fasta
