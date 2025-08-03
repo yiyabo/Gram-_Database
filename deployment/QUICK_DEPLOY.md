@@ -13,7 +13,25 @@
 
 ## 🎯 三种部署方式
 
-### 方式 1️⃣：一键自动部署（推荐新手）
+### 方式 1️⃣：🚀 升级服务器（推荐完整功能）
+
+**DigitalOcean 4GB Droplet - $24/月**
+```bash
+# 1. 创建 DigitalOcean 账户并创建 4GB Droplet
+# 2. 连接服务器
+ssh root@your-droplet-ip
+
+# 3. 一键部署完整版本
+curl -sSL https://raw.githubusercontent.com/yiyabo/Gram-_Database/feature/separate-views/deployment/quick-install.sh | bash
+```
+
+**📋 具体步骤**：
+1. [注册 DigitalOcean](https://cloud.digitalocean.com/registrations/new) (新用户 $200 免费额度)
+2. 创建 Droplet: Ubuntu 22.04, Basic $24/月 (4GB RAM)
+3. 运行上面的一键部署命令
+4. 访问: `http://your-droplet-ip`
+
+### 方式 2️⃣：一键自动部署（推荐新手）
 
 ```bash
 # 1. 上传代码到服务器
