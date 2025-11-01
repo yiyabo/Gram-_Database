@@ -13,7 +13,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 氨基酸词汇表
+# 氨基酸词汇表 (21个词汇，与训练模型匹配)
 AMINO_ACID_VOCAB = {
     'PAD': 0, 'A': 1, 'R': 2, 'N': 3, 'D': 4, 'C': 5, 'Q': 6, 'E': 7, 'G': 8, 'H': 9,
     'I': 10, 'L': 11, 'K': 12, 'M': 13, 'F': 14, 'P': 15, 'S': 16, 'T': 17, 'W': 18,
@@ -32,7 +32,8 @@ def sequence_to_tokens(sequence: str, max_length: int = 100) -> torch.Tensor:
         if aa in AMINO_ACID_VOCAB:
             tokens.append(AMINO_ACID_VOCAB[aa])
         else:
-            # 未知氨基酸跳过
+            # 未知氨基酸跳过，但记录警告
+            logger.warning(f"跳过未知氨基酸: {aa}")
             continue
     
     # 截断或填充到指定长度

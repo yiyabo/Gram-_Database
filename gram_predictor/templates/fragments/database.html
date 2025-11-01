@@ -82,13 +82,41 @@
 
                     <!-- Database Table -->
                     <div id="database-table-container" style="display: none;">
+                        <div class="mb-3">
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle"></i> 
+                                理化特性：电荷 (Charge), 疏水性 (Hydrophobicity), 疏水矩 (Hydrophobic Moment), 
+                                不稳定指数 (Instability Index), 等电点 (pI), 脂肪族指数 (Aliphatic Index), 亲水性 (Hydrophilicity)
+                            </small>
+                        </div>
                         <div class="table-responsive">
-                            <table class="table table-dark table-striped table-hover">
+                            <table class="table table-dark table-striped table-hover" style="font-size: 0.85rem;">
                                 <thead>
                                     <tr>
-                                        <th style="width: 120px;">ID</th>
-                                        <th>Sequence</th>
-                                        <th style="width: 100px;">Length</th>
+                                        <th style="width: 100px;">ID</th>
+                                        <th style="width: 200px;">Sequence</th>
+                                        <th style="width: 60px;">Length</th>
+                                        <th style="width: 80px;" class="text-center" data-sort="charge">
+                                            <span class="sortable-header">Charge <i class="bi bi-arrow-down-up"></i></span>
+                                        </th>
+                                        <th style="width: 90px;" class="text-center" data-sort="hydrophobicity">
+                                            <span class="sortable-header">Hydrophob. <i class="bi bi-arrow-down-up"></i></span>
+                                        </th>
+                                        <th style="width: 90px;" class="text-center" data-sort="hydrophobic_moment">
+                                            <span class="sortable-header">Hydrophob. M. <i class="bi bi-arrow-down-up"></i></span>
+                                        </th>
+                                        <th style="width: 90px;" class="text-center" data-sort="instability_index">
+                                            <span class="sortable-header">Instab. Index <i class="bi bi-arrow-down-up"></i></span>
+                                        </th>
+                                        <th style="width: 60px;" class="text-center" data-sort="isoelectric_point">
+                                            <span class="sortable-header">pI <i class="bi bi-arrow-down-up"></i></span>
+                                        </th>
+                                        <th style="width: 90px;" class="text-center" data-sort="aliphatic_index">
+                                            <span class="sortable-header">Aliph. Index <i class="bi bi-arrow-down-up"></i></span>
+                                        </th>
+                                        <th style="width: 90px;" class="text-center" data-sort="hydrophilicity">
+                                            <span class="sortable-header">Hydrophil. <i class="bi bi-arrow-down-up"></i></span>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody id="sequence-table-body">

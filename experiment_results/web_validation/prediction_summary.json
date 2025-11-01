@@ -1,0 +1,8 @@
+{
+  "total_sequences": 5,
+  "positive_predictions": 4,
+  "negative_predictions": 1,
+  "average_probability": 0.8860568881034852,
+  "high_confidence_positive": 4,
+  "prediction_accuracy_vs_expected": 0.8
+}

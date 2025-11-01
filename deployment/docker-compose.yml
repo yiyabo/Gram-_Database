@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # Web 应用服务
+  gram-predictor:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    container_name: gram-predictor-app
+    restart: unless-stopped
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-this}
+      - FLASK_ENV=production
+    volumes:
+      - ../data:/app/data:ro  # 只读挂载数据文件
+      - ../model:/app/model:ro  # 只读挂载模型文件
+      - log_volume:/var/log/gram_predictor
+      - upload_volume:/tmp/uploads
+    networks:
+      - gram-predictor-network
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx 反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: gram-predictor-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../gram_predictor/static:/var/www/static:ro
+      - ssl_certs:/etc/nginx/ssl:ro
+      - log_volume:/var/log/nginx
+    networks:
+      - gram-predictor-network
+    depends_on:
+      - gram-predictor
+
+  # Redis 缓存 (可选)
+  redis:
+    image: redis:alpine
+    container_name: gram-predictor-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - gram-predictor-network
+
+  # 日志收集 (可选)
+  # logrotate:
+  #   image: linkyard/docker-logrotate
+  #   container_name: gram-predictor-logrotate
+  #   restart: unless-stopped
+  #   volumes:
+  #     - log_volume:/logs
+  #     - ./logrotate.conf:/etc/logrotate.d/app
+
+networks:
+  gram-predictor-network:
+    driver: bridge
+
+volumes:
+  log_volume:
+    driver: local
+  upload_volume:
+    driver: local
+  ssl_certs:
+    driver: local
+  redis_data:
+    driver: local

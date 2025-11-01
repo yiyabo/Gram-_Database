@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antimicrobial Peptide Database</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border-left: 4px solid #667eea;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .search-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .search-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+            gap: 15px;
+            align-items: end;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .input-group label {
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .input-group input {
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .search-btn {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+        
+        .search-btn:hover {
+            background: #5a67d8;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e9ecef;
+            vertical-align: top;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .sequence-cell {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-width: 300px;
+            word-break: break-all;
+            line-height: 1.4;
+        }
+        
+        .id-cell {
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .number-cell {
+            text-align: right;
+            font-weight: 500;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        
+        .pagination button:hover {
+            background: #f8f9fa;
+        }
+        
+        .pagination button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        @media (max-width: 768px) {
+            .search-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧬 Antimicrobial Peptide Database</h1>
+            <p>Explore antimicrobial peptide sequences and their properties</p>
+        </div>
+        
+        <div class="content">
+            <!-- Statistics -->
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalSequences">-</div>
+                    <div class="stat-label">Total Sequences</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="avgLength">-</div>
+                    <div class="stat-label">Average Length</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="lengthRange">-</div>
+                    <div class="stat-label">Length Range</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="avgCharge">-</div>
+                    <div class="stat-label">Average Charge</div>
+                </div>
+            </div>
+            
+            <!-- Search Section -->
+            <div class="search-section">
+                <div class="search-grid">
+                    <div class="input-group">
+                        <label for="searchQuery">Keyword Search</label>
+                        <input type="text" id="searchQuery" placeholder="Enter ID, sequence, or description...">
+                    </div>
+                    <div class="input-group">
+                        <label for="minLength">Min Length</label>
+                        <input type="number" id="minLength" placeholder="e.g.: 10">
+                    </div>
+                    <div class="input-group">
+                        <label for="maxLength">Max Length</label>
+                        <input type="number" id="maxLength" placeholder="e.g.: 100">
+                    </div>
+                    <div class="input-group">
+                        <label for="minCharge">Min Charge</label>
+                        <input type="number" id="minCharge" step="0.1" placeholder="e.g.: -2">
+                    </div>
+                    <div class="input-group">
+                        <label>&nbsp;</label>
+                        <button class="search-btn" onclick="searchDatabase()">🔍 Search</button>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <button class="search-btn" onclick="exportFasta()" style="background: #28a745;">📄 Export FASTA</button>
+                    <button class="search-btn" onclick="clearSearch()" style="background: #6c757d; margin-left: 10px;">🗑️ Clear</button>
+                </div>
+            </div>
+            
+            <!-- Data Table -->
+            <div class="table-container">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Sequence</th>
+                            <th>Length</th>
+                            <th>Charge</th>
+                            <th>Hydrophobicity</th>
+                            <th>Molecular Weight</th>
+                            <th>Polar Residues %</th>
+                            <th>Hydrophobic Residues %</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr>
+                            <td colspan="9" class="loading">Loading data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <div class="pagination" id="pagination"></div>
+        </div>
+    </div>
+
+    <script>
+        let allData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        const itemsPerPage = 20;
+        
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDatabase();
+            
+            // Search box enter event
+            document.getElementById('searchQuery').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchDatabase();
+                }
+            });
+        });
+        
+        async function loadDatabase() {
+            try {
+                const response = await fetch('/api/database');
+                const data = await response.json();
+                
+                if (data.success) {
+                    allData = data.sequences;
+                    filteredData = allData;
+                    updateStats(data.stats);
+                    displayTable();
+                } else {
+                    showError('加载数据失败: ' + data.error);
+                }
+            } catch (error) {
+                showError('网络错误: ' + error.message);
+            }
+        }
+        
+        function updateStats(stats) {
+            document.getElementById('totalSequences').textContent = stats.total_sequences || 0;
+            document.getElementById('avgLength').textContent = stats.average_length || '-';
+            document.getElementById('lengthRange').textContent = 
+                stats.length_range ? `${stats.length_range[0]}-${stats.length_range[1]}` : '-';
+            document.getElementById('avgCharge').textContent = stats.average_charge || '-';
+        }
+        
+        async function searchDatabase() {
+            const query = document.getElementById('searchQuery').value.trim();
+            const minLength = document.getElementById('minLength').value;
+            const maxLength = document.getElementById('maxLength').value;
+            const minCharge = document.getElementById('minCharge').value;
+            
+            // 构建查询参数
+            const params = new URLSearchParams();
+            if (query) params.append('q', query);
+            if (minLength) params.append('min_length', minLength);
+            if (maxLength) params.append('max_length', maxLength);
+            if (minCharge) params.append('min_charge', minCharge);
+            
+            try {
+                const response = await fetch(`/api/search?${params}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    filteredData = data.sequences;
+                    currentPage = 1;
+                    displayTable();
+                } else {
+                    showError('搜索失败: ' + data.error);
+                }
+            } catch (error) {
+                showError('搜索错误: ' + error.message);
+            }
+        }
+        
+        function displayTable() {
+            const tbody = document.getElementById('tableBody');
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageData = filteredData.slice(startIndex, endIndex);
+            
+            if (pageData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="loading">没有找到匹配的数据</td></tr>';
+                updatePagination();
+                return;
+            }
+            
+            tbody.innerHTML = pageData.map(seq => `
+                <tr>
+                    <td class="id-cell">${seq.id}</td>
+                    <td class="sequence-cell">${seq.sequence}</td>
+                    <td class="number-cell">${seq.length}</td>
+                    <td class="number-cell">${seq.charge}</td>
+                    <td class="number-cell">${seq.hydrophobicity}</td>
+                    <td class="number-cell">${seq.molecular_weight}</td>
+                    <td class="number-cell">${seq.polar_percentage}%</td>
+                    <td class="number-cell">${seq.hydrophobic_percentage}%</td>
+                    <td>${seq.description || '-'}</td>
+                </tr>
+            `).join('');
+            
+            updatePagination();
+        }
+        
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+            const pagination = document.getElementById('pagination');
+            
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+            
+            let paginationHTML = '';
+            
+            // Previous page
+            if (currentPage > 1) {
+                paginationHTML += `<button onclick="changePage(${currentPage - 1})">‹ Previous</button>`;
+            }
+            
+            // Page numbers
+            for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
+                const activeClass = i === currentPage ? 'active' : '';
+                paginationHTML += `<button class="${activeClass}" onclick="changePage(${i})">${i}</button>`;
+            }
+            
+            // Next page
+            if (currentPage < totalPages) {
+                paginationHTML += `<button onclick="changePage(${currentPage + 1})">Next ›</button>`;
+            }
+            
+            pagination.innerHTML = paginationHTML;
+        }
+        
+        function changePage(page) {
+            currentPage = page;
+            displayTable();
+        }
+        
+        function showError(message) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = `<tr><td colspan="9" class="error">${message}</td></tr>`;
+        }
+        
+        // Clear search
+        function clearSearch() {
+            document.getElementById('searchQuery').value = '';
+            document.getElementById('minLength').value = '';
+            document.getElementById('maxLength').value = '';
+            document.getElementById('minCharge').value = '';
+            filteredData = allData;
+            currentPage = 1;
+            displayTable();
+        }
+        
+        // Export FASTA function
+        function exportFasta() {
+            const query = document.getElementById('searchQuery').value;
+            const minLength = document.getElementById('minLength').value;
+            const maxLength = document.getElementById('maxLength').value;
+            const minCharge = document.getElementById('minCharge').value;
+            
+            // Build query parameters
+            const params = new URLSearchParams();
+            if (query) params.append('q', query);
+            if (minLength) params.append('min_length', minLength);
+            if (maxLength) params.append('max_length', maxLength);
+            if (minCharge) params.append('min_charge', minCharge);
+            
+            // Create download link
+            const url = '/api/export/fasta?' + params.toString();
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'peptides.fasta';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    </script>
+</body>
+</html>

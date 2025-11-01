@@ -1,0 +1,33 @@
+{
+  "top_10_features": [
+    "AA_M",
+    "AA_K",
+    "Length",
+    "Charge",
+    "Hydrophobic_Moment",
+    "Isoelectric_Point",
+    "AA_E",
+    "AA_C",
+    "AA_D",
+    "AA_S"
+  ],
+  "category_importance": {
+    "Physical Properties": 0.10055871692417766,
+    "Hydrophobicity": 0.03651319889797624,
+    "Structural Properties": 0.021200768663803344,
+    "Amino Acid Composition": 0.027319135760296587
+  },
+  "biological_insights": {
+    "most_important_physical": [
+      "Length"
+    ],
+    "most_important_hydrophobic": [
+      "Hydrophobic_Moment"
+    ],
+    "most_important_aa": [
+      "AA_M",
+      "AA_K",
+      "AA_E"
+    ]
+  }
+}

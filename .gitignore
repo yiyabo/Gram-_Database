@@ -58,13 +58,16 @@ enhanced_architecture/output/tensorboard/events.out.tfevents.*
 # temp_*.csv
 .aider*
 --api_keys={'gemini': 'AIzaSyDmq6anTIob-5otVDfdAWrQy3NHQjio8Z8'}
+
 # 模型文件 - 太大不适合Git
 gram_predictor/models/*.pt
 gram_predictor/models/*.pth
 gram_predictor/models/*.h5
 gram_predictor/models/*.keras
+Gram_feature
 *.pt
 *.pth
+
 # Generated images and charts
 Gram_feature/*.png
 gram_predictor/charts/*.png
@@ -77,3 +80,31 @@ predictions/
 # Cache directories
 esm2_cache/
 test_cache/
+
+# Paper files
+Paper/Paper.aux
+Paper/Paper.fdb_latexmk
+Paper/Paper.fls
+Paper/Paper.pdf
+Paper/Paper.out
+Paper/Paper.synctex.gz
+Paper/figure/Box_Plot.png
+Paper/figure/Heatmap.png
+Paper/figure/Rader.png
+Paper/Paper.tex
+Paper/figure/Model Overview.png
+
+# Experiment results (large files)
+experiment_results/figures/*.png
+experiment_results/new_graph/*.png
+experiment_results/shap_analysis/*.png
+experiment_code/data/*.fasta
+
+# Other directories
+plots/
+Paper/
+model/
+experiment_results/
+experiment_code/
+Draw.ipynb
+conditional_diffusion_architecture_plan.md

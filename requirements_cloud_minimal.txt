@@ -1,0 +1,13 @@
+# 超级轻量化云部署版本 - 只保留核心功能
+Flask>=2.0
+numpy>=1.20.0
+pandas>=1.3.0
+scikit-learn>=0.24.0
+biopython>=1.79
+gunicorn>=20.0.0
+
+# 使用CPU版本的TensorFlow（体积更小）
+tensorflow-cpu>=2.8.0
+
+# 移除的大型依赖：
+# torch, transformers, matplotlib, seaborn, tensorboard, wandb, peptides, geoopt, tqdm

@@ -13,12 +13,12 @@ import math
 # 导入统一的词汇表和序列处理函数
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from data_loader import AMINO_ACID_VOCAB, VOCAB_TO_AA, sequence_to_tokens, tokens_to_sequence
+from gram_predictor.data_loader import AMINO_ACID_VOCAB, VOCAB_TO_AA, sequence_to_tokens, tokens_to_sequence
 
 class D3PMScheduler:
-    """噪声调度器，用于控制扩散过程中的噪声水平"""
+    """噪声调度器if __name__ == "__main__":中的噪声水平"""
     
     def __init__(self, num_timesteps: int = 1000, vocab_size: int = None, 
                  schedule_type: str = 'linear'):
@@ -197,7 +197,7 @@ class D3PMScheduler:
 class D3PMUNet(nn.Module):
     """用于蛋白质序列的U-Net架构扩散模型"""
     
-    def __init__(self, vocab_size: int = 21, hidden_dim: int = 512, 
+    def __init__(self, vocab_size: int = 22, hidden_dim: int = 512, 
                  num_layers: int = 8, num_heads: int = 8, 
                  max_seq_len: int = 100, dropout: float = 0.1):
         super().__init__()
@@ -584,7 +584,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from data_loader import AMINO_ACID_VOCAB, VOCAB_TO_AA, sequence_to_tokens, tokens_to_sequence
+from ..data_loader import AMINO_ACID_VOCAB, VOCAB_TO_AA, sequence_to_tokens, tokens_to_sequence
 
 
 if __name__ == "__main__":
@@ -595,8 +595,8 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
     
     # 创建模型和调度器
-    scheduler = D3PMScheduler(num_timesteps=1000, vocab_size=21)
-    model = D3PMUNet(vocab_size=21, hidden_dim=256, num_layers=4, max_seq_len=50)
+    scheduler = D3PMScheduler(num_timesteps=1000, vocab_size=22)
+    model = D3PMUNet(vocab_size=22, hidden_dim=256, num_layers=4, max_seq_len=50)
     diffusion = D3PMDiffusion(model, scheduler, device)
     
     # 测试训练
@@ -604,7 +604,7 @@ if __name__ == "__main__":
     seq_len = 30
     
     # 创建假数据
-    x = torch.randint(0, 21, (batch_size, seq_len), device=device)
+    x = torch.randint(0, len(AMINO_ACID_VOCAB), (batch_size, seq_len), device=device)
     
     # 计算损失
     loss = diffusion.training_loss(x)
