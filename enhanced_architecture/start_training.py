@@ -58,7 +58,7 @@ def main():
                     return 1
             
             # 测试配置
-            from config.model_config import get_config
+            from gram_predictor.config.model_config import get_config
             config = get_config(args.config)
             print(f"\n✓ 配置 '{args.config}' 加载成功")
             print(f"  - 训练轮数: {config.training.num_epochs}")

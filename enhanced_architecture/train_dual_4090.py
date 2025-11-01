@@ -19,11 +19,11 @@ import wandb
 import json
 
 # 导入项目模块
-from config.model_config import get_config
-from esm2_auxiliary_encoder import ESM2AuxiliaryEncoder, ContrastiveLoss
-from diffusion_models.d3pm_diffusion import D3PMDiffusion, D3PMScheduler, D3PMUNet
-from data_loader import AntimicrobialPeptideDataset, ContrastiveAMPDataset, collate_contrastive_batch
-from evaluation.evaluator import ModelEvaluator
+from gram_predictor.config.model_config import get_config
+from gram_predictor.esm2_auxiliary_encoder import ESM2AuxiliaryEncoder, ContrastiveLoss
+from gram_predictor.diffusion_models.d3pm_diffusion import D3PMDiffusion, D3PMScheduler, D3PMUNet
+from gram_predictor.data_loader import AntimicrobialPeptideDataset, ContrastiveAMPDataset, collate_contrastive_batch
+from enhanced_architecture.evaluation.evaluator import ModelEvaluator
 
 class Dual4090Trainer:
     """专门针对双4090的训练器"""

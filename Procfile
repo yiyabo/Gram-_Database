@@ -1,1 +1,1 @@
-web: gunicorn cloud_app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+web: gunicorn gram_predictor.app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120

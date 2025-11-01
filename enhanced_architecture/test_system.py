@@ -9,30 +9,30 @@ def test_imports():
         print("开始测试组件导入...")
         
         # 测试配置
-        from config.model_config import get_config
+        from gram_predictor.config.model_config import get_config
         config = get_config('quick_test')
         print("✓ 配置系统正常")
         
         # 测试数据加载器
-        from data_loader import AntimicrobialPeptideDataset, ContrastiveAMPDataset, sequence_to_tokens
+        from gram_predictor.data_loader import AntimicrobialPeptideDataset, ContrastiveAMPDataset, sequence_to_tokens
         test_seq = "KRWWKWWRR"
         tokens = sequence_to_tokens(test_seq, 20)
         print("✓ 数据加载器正常")
         
         # 测试ESM-2编码器
-        from esm2_auxiliary_encoder import ESM2AuxiliaryEncoder, ContrastiveLoss
+        from gram_predictor.esm2_auxiliary_encoder import ESM2AuxiliaryEncoder, ContrastiveLoss
         print("✓ ESM-2编码器正常")
         
         # 测试扩散模型
-        from diffusion_models.d3pm_diffusion import D3PMDiffusion, D3PMScheduler
+        from gram_predictor.diffusion_models.d3pm_diffusion import D3PMDiffusion, D3PMScheduler
         print("✓ D3PM扩散模型正常")
         
         # 测试评估器
-        from evaluation.evaluator import ModelEvaluator, EvaluationMetrics
+        from enhanced_architecture.evaluation.evaluator import ModelEvaluator, EvaluationMetrics
         print("✓ 评估器正常")
         
         # 测试主训练器
-        from main_trainer import EnhancedAMPTrainer
+        from enhanced_architecture.main_trainer import EnhancedAMPTrainer
         print("✓ 主训练器正常")
         
         print("\n🎉 所有核心组件导入和基本测试成功!")

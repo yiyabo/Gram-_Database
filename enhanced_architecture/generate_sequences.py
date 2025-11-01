@@ -11,10 +11,10 @@ from typing import List, Optional
 import os
 
 # 导入项目模块
-from config.model_config import get_config
-from esm2_auxiliary_encoder import ESM2AuxiliaryEncoder
-from diffusion_models.d3pm_diffusion import D3PMDiffusion, D3PMScheduler, D3PMUNet
-from data_loader import tokens_to_sequence
+from gram_predictor.config.model_config import get_config
+from gram_predictor.esm2_auxiliary_encoder import ESM2AuxiliaryEncoder
+from gram_predictor.diffusion_models.d3pm_diffusion import D3PMDiffusion, D3PMScheduler, D3PMUNet
+from gram_predictor.data_loader import tokens_to_sequence
 
 class SequenceGenerator:
     """序列生成器"""

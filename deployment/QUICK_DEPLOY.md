@@ -106,7 +106,7 @@ sudo apt install unattended-upgrades
 | 🔴 内存不足 | 增加 swap：`sudo fallocate -l 2G /swapfile` |
 | 🔴 模型加载失败 | 检查文件权限：`chmod -R 644 model/` |
 | 🔴 磁盘空间不足 | 使用轻量级版本：修改 `requirements.txt` 为轻量级依赖 |
-| 🔴 TensorFlow 太大 | 部署演示版本：使用 `lightweight_app.py` |
+| 🔴 TensorFlow 太大 | 使用精简版：`cloud_minimal_app.py` 或部署到更大服务器 |
 
 ### 🚨 磁盘空间不足解决方案
 
