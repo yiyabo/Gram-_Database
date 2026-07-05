@@ -57,7 +57,6 @@ enhanced_architecture/output/tensorboard/events.out.tfevents.*
 # temp_*.fasta
 # temp_*.csv
 .aider*
---api_keys={'gemini': 'AIzaSyDmq6anTIob-5otVDfdAWrQy3NHQjio8Z8'}
 
 # 模型文件 - 太大不适合Git
 gram_predictor/models/*.pt

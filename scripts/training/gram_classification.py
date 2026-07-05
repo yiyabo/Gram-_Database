@@ -291,7 +291,7 @@ if __name__ == "__main__":
     gram_neg_file = './data/Gram-.fasta'
     gram_pos_file = './data/Gram+.fasta'
     gram_both_file = './data/Gram+-.fasta'
-    uniport_file = './data/uniport'
+    uniport_file = './data/uniport.tsv'
     
     # 准备革兰氏阴性菌分类数据
     df = prepare_gram_negative_classification_data(

@@ -4,6 +4,15 @@
 """
 实验第5部分：生成模型探索 (Generative Model Exploration)
 使用真实训练完成的D3PM+ESM-2生成模型进行抗菌肽序列生成
+
+说明：
+- 报告中的最终结果（experiment_results/generative_model/generated_sequences.fasta）
+  由服务器端真实模型生成后下载到本仓库，具有固定长度、M-起始等真模型特征。
+- 本脚本在本地无模型权重（gram_predictor/models/best.pt 不存在）时，
+  generate_sequences_with_real_model 会降级到 generate_mock_sequences_fallback
+  （按氨基酸频率加权随机拼接 + 启发式概率），仅用于本地 pipeline 联调测试，
+  其输出不应作为实验结果引用。
+- 如需复现真实生成结果，请在装有模型权重的服务器环境运行，或直接使用已提交的 fasta。
 """
 
 import os
